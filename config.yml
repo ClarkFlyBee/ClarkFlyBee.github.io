@@ -131,6 +131,7 @@ params:
   #         SiteVerificationTag: "XYZabc"
 
   assets:
+    disableFingerprinting: true
     disableHLJS: true
   #     favicon: "<link / abs url>"
   #     favicon16x16: "<link / abs url>"
