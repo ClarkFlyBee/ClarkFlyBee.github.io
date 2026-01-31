@@ -1,0 +1,44 @@
+# 类型: 简要描述 (50字符内)
+# 常用类型: post | update | publish | config | chore | assets | fix | refactor | docs
+# 示例: post: add literature review on GNN architectures
+
+
+# [可选] 详细说明 (如果标题不够表达)
+# - 改了什么？
+# - 为什么改？
+# - 有什么影响？
+
+
+# --- 以下是常用速查表，提交时请删除 ---
+# 
+# 内容类:
+#   post:     发布新文章 (draft: false)
+#   draft:    保存草稿 (draft: true)
+#   update:   更新已有文章内容/数据
+#   publish:  将草稿转为正式发布
+# 
+# 技术类:
+#   config:   修改 config.yml / 站点配置
+#   chore:    脚本/工具/依赖更新 (deploy.ps1, tasks.json)
+#   ci:       自动化配置 (GitHub Actions)
+#   build:    Hugo 版本升级/构建优化
+# 
+# 资源类:
+#   assets:   图片/静态资源更新
+#   style:    CSS/样式调整
+# 
+# 修复类:
+#   fix:      修复错误链接/内容错误
+#   hotfix:   紧急修复线上问题
+#   revert:   撤销上次提交
+#
+# 其他:
+#   refactor: 重构文章结构/文件夹重组
+#   docs:     README/文档更新
+#   style:    格式调整 (标点/排版)
+
+# --- 提交前检查清单 ---
+# [ ] 标题简短清晰，首字母大写
+# [ ] 标题后跟空行
+# [ ] 正文需要时详细说明
+# [ ] 删除模板中的注释和速查表
