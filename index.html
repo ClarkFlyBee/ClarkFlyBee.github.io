@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-cn" dir="auto" data-theme="auto">
+
+<head>
+	<meta name="generator" content="Hugo 0.154.5"><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>ClarkFlyBee&#39;s Blog</title>
+
+<meta name="description" content="ClarkFlyBee的博客，记录学习笔记">
+<meta name="author" content="ClarkFlyBee">
+<link rel="canonical" href="https://clarkflybee.github.io/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://clarkflybee.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://clarkflybee.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://clarkflybee.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://clarkflybee.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://clarkflybee.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" type="application/rss+xml" href="https://clarkflybee.github.io/index.xml" title="rss">
+<link rel="alternate" type="application/json" href="https://clarkflybee.github.io/index.json" title="json">
+<link rel="alternate" hreflang="zh-cn" href="https://clarkflybee.github.io/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://clarkflybee.github.io/">
+  <meta property="og:site_name" content="ClarkFlyBee&#39;s Blog">
+  <meta property="og:title" content="ClarkFlyBee&#39;s Blog">
+  <meta property="og:description" content="ClarkFlyBee的博客，记录学习笔记">
+  <meta property="og:locale" content="zh-cn">
+  <meta property="og:type" content="website">
+      <meta property="og:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:title" content="ClarkFlyBee&#39;s Blog">
+<meta name="twitter:description" content="ClarkFlyBee的博客，记录学习笔记">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "ClarkFlyBee's Blog",
+  "url": "https://clarkflybee.github.io/",
+  "description": "ClarkFlyBee的博客，记录学习笔记",
+  "logo": "https://clarkflybee.github.io/favicon.ico",
+  "sameAs": [
+      "https://github.com/ClarkFlyBee"
+  ]
+}
+</script>
+</head>
+<body class="list" id="top">
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://clarkflybee.github.io/" accesskey="h" title="ClarkFlyBee&#39;s Blog (Alt + H)">ClarkFlyBee&#39;s Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://clarkflybee.github.io/" title="首页">
+                    <span class="active">首页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/posts/" title="文章">
+                    <span>文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/about/" title="关于">
+                    <span>关于</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main"> 
+<article class="first-entry home-info">
+    <header class="entry-header">
+        <h1>ClarkFlyBee&rsquo;s Blog</h1>
+    </header>
+    <div class="entry-content">
+        记录学习笔记，主要包括<strong>论文阅读</strong>、<strong>技术学习</strong>等
+    </div>
+    <footer class="entry-footer">
+        <div class="social-icons" >
+    <a href="https://github.com/ClarkFlyBee" target="_blank" rel="noopener noreferrer me"
+        title="Github">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round">
+    <path
+        d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+    </path>
+</svg>
+    </a>
+</div>
+
+    </footer>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">混淆矩阵与 AUC：理解T/F/P/N分类评估指标
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> 最近参与的医学场景的项目中，模型的评价指标之一是AUC。
+要讲清楚这个指标，需要首先了解一个评价模型的经典工具：混淆矩阵。
+混淆矩阵 —— 模型能不能“明辨是非” 基础定义 我们训练AI模型，一个典型的任务是去预测一个事情是否会发生。
+那医学场景举个例子：
+我们给模型输入过去手术的数据，让它学习其中的特征。
+我们的目的是希望训练后的模型在接受一段时间的手术数据输入后，给出未来一定时间内发生某类异常事件的可能性。
+那么如何评价这个模型做的好不好呢？简单来说，需要记录预测结果与实际情况是否一致。我们定义：
+预测结果
+预测为正例（Positive, P）
+预测为负例（Negative, N）
+实际情况
+实际为正例
+实际为负例
+对于这四种情况排列组合，我们就会得到一个模型的混淆矩阵（Confusion Matrix）：
+预测为正例 P 预测为负例 N 实际为正例 TP（True Positive） FN（False Negative） 实际为负例 FP（False Positive） TN（True Negative） 对于矩阵的四个象限，其含义分别为：
+缩写 含义 场景 TP 预测为正，实际为正 ✅ 正确识别阳性（如：有异常事件有警报） TN 预测为负，实际为负 ✅ 正确识别阴性（如：无异常事件无警报） FP 预测为正，实际为负 ❌ 误报（如：无异常事件有警报） FN 预测为负，实际为正 ❌ 漏报（如：有异常事件无警报） 这里我经常搞糊涂，Positive和Negative分别对应的是预测的情况。预测为正例，指预测内容为事件发生，在混淆矩阵中标记为P，反之为N。
+但与预测情况相对的，实际情况为正例，并不意味着对应情况记作T。
+事实上，当实际情况与预测内容相匹配时，才会记为T；反之即为F。
+也就是说，T 和 F 并不是标记实际情况中事件是否发生，而是表示实际情况与预测内容是否一致。
+由混淆矩阵派生的关键指标 在实践中，混淆矩阵中的TP、FN、FP、TN通常是记录测试模型时，符合对应情况的测试样本数量。
+比如说我们训练好了模型，测试时我们输入了1000个样本，结果分别为：
+400个样本被预测为会发生异常事件
+其中150个样本真的发生了异常事件，250个样本没有发生异常事件 600个样本被预测为不发生异常事件
+其中50个样本真的发生了异常事件，550个样本没有发生异常事件 此时，这个模型的混淆矩阵可以记为：
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-02-04 19:22:30 +0800 CST'>February 4, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 混淆矩阵与 AUC：理解T/F/P/N分类评估指标" href="https://clarkflybee.github.io/posts/2026-02-04-auc-confusion-matrix-primer/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">第一篇博客
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>一切的开始 是的，你正在看到的是我的第一篇博客。
+我觉得用第一次编程的脚本作为第一篇博客的内容再合适不过了：
+1 print(&#34;Hello World!&#34;) 这是我与编程的开始，我也把它作为我博客的开始。
+</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-01-30 16:17:15 +0800 CST'>January 30, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 第一篇博客" href="https://clarkflybee.github.io/posts/first-blog/"></a>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>© 2026 ClarkFlyBee · <a href="https://github.com/clarkflybee">GitHub</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>
