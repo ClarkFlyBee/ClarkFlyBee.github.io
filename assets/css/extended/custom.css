@@ -1,0 +1,16 @@
+/* 增大 h4 标题字体 */
+.post-content h4 {
+    font-size: 1.2em;  /* 默认约 1em，改为比正文大 */
+    font-weight: 600;   /* 加粗区分 */
+}
+
+/* 可选：同时调整 h5, h6 */
+.post-content h5 {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.post-content h6 {
+    font-size: 1.05em;
+    font-weight: 600;
+}
