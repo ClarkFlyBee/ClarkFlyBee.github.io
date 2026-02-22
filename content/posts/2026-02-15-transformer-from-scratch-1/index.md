@@ -1,6 +1,6 @@
 +++
 date = '2026-02-15T11:12:29+08:00'
-draft = true
+draft = false
 title = '从零开始的Transformer(1): 架构拆解'
 ShowToc = false
 math = true
