@@ -257,7 +257,6 @@ AUC并不反映精确率，或者说查准率。我们可以结合 ***PR曲线**
 画图和模拟数据的代码见下：
 
 ```python
-# generate_fraud_roc.py
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import roc_curve, auc
