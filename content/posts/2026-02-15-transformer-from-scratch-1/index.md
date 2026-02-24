@@ -4,6 +4,14 @@ draft = false
 title = '从零开始的Transformer(1): 架构拆解'
 ShowToc = false
 math = true
+categories = ["tutorial"]
+tags = [
+    "deep-learning",
+    "transformer",
+    "pytorch",
+    "multi-head-attention",
+    "python"
+]
 +++
 
 在如今的深度学习领域，Transformer架构已经称得上是**经典模型**了。从最初的NLP自然语言处理到后来推广到计算机视觉领域，ChatGPT等一系列基于Transformer模型的产品，对世界带来翻天覆地的变化改变世界的充分说明了它的强大实力与重要作用。

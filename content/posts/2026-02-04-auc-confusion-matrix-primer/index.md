@@ -4,6 +4,15 @@ draft = false
 math = true
 title = '混淆矩阵与 AUC：理解T/F/P/N分类评估指标'
 ShowToc = false
+categories = ["notes"]
+tags = [
+  "medts", 
+  "machine-learning", 
+  "auc", 
+  "confusion-matrix", 
+  "tutorial", 
+  "python"
+]
 +++
 
 > 最近参与的医学场景的项目中，模型的评价指标之一是AUC。

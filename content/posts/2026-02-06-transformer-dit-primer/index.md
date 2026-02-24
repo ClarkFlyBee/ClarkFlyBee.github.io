@@ -4,6 +4,15 @@ draft = true
 title = 'Transformer + 扩散模型：DiT 入门'
 ShowToc = false
 math = true
+categories = ["draft"]
+tags = [
+    "deep-learning",
+    "transformer",
+    "pytorch",
+    "python",
+    "DDPM",
+    "DiT"
+]
 +++
 
 > 本文内容基于论文 [Scalable Diffusion Models with Transformers](https://arxiv.org/abs/2212.09748)。

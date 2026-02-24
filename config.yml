@@ -24,7 +24,12 @@ pagination:
   pagerSize: 5
 
 languages:
-  zh-cn: 
+  zh-cn:
+    languageName: "中文"
+    weight: 1
+    taxonomies: 
+      category: categories
+      tag: tags
     menu:
       main:
         - name: 首页
@@ -33,6 +38,12 @@ languages:
         - name: 文章
           url: /posts/
           weight: 20
+        - name: 标签
+          url: /tags/
+          weight: 25
+        - name: 分类
+          url: /categories/
+          weight: 26
         - name: 关于
           url: /about/
           weight: 30
