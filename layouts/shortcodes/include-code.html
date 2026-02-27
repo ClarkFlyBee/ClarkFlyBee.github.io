@@ -1,0 +1,24 @@
+{{ $file := .Get "file" }}
+{{ $lang := .Get "lang" | default "python" }}
+{{ $summary := .Get "summary" | default $file }}
+
+{{/* Windows 路径兼容 */}}
+{{ $cleanFile := replace $file "\\" "/" }}
+
+{{/* 尝试读取：先 Resources，后文件系统 */}}
+{{ $resource := .Page.Resources.GetMatch $cleanFile }}
+{{ $content := cond ($resource) ($resource.Content) (os.ReadFile (path.Join .Page.File.Dir $cleanFile)) }}
+
+{{ if $content }}
+<details style="border: 1px solid var(--border); border-radius: 6px; margin: 1em 0; background: var(--entry);">
+  <summary style="padding: 0.8em 1em; background: var(--code-bg); cursor: pointer; font-weight: 500;">
+    📁 {{ $summary }}
+  </summary>
+  {{ highlight $content $lang "" }}
+</details>
+{{ else }}
+<p style="color: red; border: 1px solid red; padding: 10px;">
+  ❌ 无法读取: <code>{{ $cleanFile }}</code><br>
+  检查: content/.../{{ .Page.File.Dir }}{{ $cleanFile }}
+</p>
+{{ end }}

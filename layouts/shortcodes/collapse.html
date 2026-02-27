@@ -1,0 +1,13 @@
+{{ $summary := .Get "summary" | default "展开代码" }}
+{{ $lang := .Get "lang" | default "python" }}
+{{/* 关键：去除首尾空白 */}}
+{{ $code := trim .Inner " \n\r\t" }}
+
+<details style="border: 1px solid var(--border); border-radius: 6px; margin: 1em 0;">
+  <summary style="padding: 0.5em 1em; background: var(--code-bg); cursor: pointer; font-weight: 500;">
+    {{ $summary }}
+  </summary>
+  <div style="margin: 0;">
+    {{ highlight $code $lang "" }}
+  </div>
+</details>
