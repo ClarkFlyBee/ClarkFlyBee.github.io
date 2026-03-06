@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>文章 on ClarkFlyBee&#39;s Blog</title>
+    <link>https://clarkflybee.github.io/posts/</link>
+    <description>Recent content in 文章 on ClarkFlyBee&#39;s Blog</description>
+    <image>
+      <title>ClarkFlyBee&#39;s Blog</title>
+      <url>https://clarkflybee.github.io/images/show.png</url>
+      <link>https://clarkflybee.github.io/images/show.png</link>
+    </image>
+    <generator>Hugo -- 0.154.5</generator>
+    <language>zh-cn</language>
+    <copyright>2026 ClarkFlyBee · GitHub</copyright>
+    <lastBuildDate>Sun, 15 Feb 2026 11:12:29 +0800</lastBuildDate>
+    <atom:link href="https://clarkflybee.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>从零开始的Transformer(1): 架构拆解</title>
+      <link>https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/</link>
+      <pubDate>Sun, 15 Feb 2026 11:12:29 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/</guid>
+      <description>&lt;p&gt;在如今的深度学习领域，Transformer架构已经称得上是&lt;strong&gt;经典模型&lt;/strong&gt;了。从最初的NLP自然语言处理到后来推广到计算机视觉领域，ChatGPT等一系列基于Transformer模型的产品，对世界带来翻天覆地的变化改变世界的充分说明了它的强大实力与重要作用。&lt;/p&gt;
+&lt;p&gt;作为深度学习领域的初学者，我想简单介绍这一经典架构的同时，用案例编码来学习模型的实际应用，为后续工作打打基础。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;值得一提的，本文中给出的案例大部分还是来自NLP领域。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;transformer-架构简介&#34;&gt;Transformer 架构简介&lt;/h2&gt;
+&lt;h3 id=&#34;语言模型&#34;&gt;语言模型&lt;/h3&gt;
+&lt;p&gt;正如前文所说，Transformer最开始解决的问题是自然语言处理。Transformer 模型本质上都是预训练&lt;strong&gt;语言模型&lt;/strong&gt;，在大量生语料上进行训练。我们可以看到两类常见的任务：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;基于句子前$n$个词来预测下一个词。&lt;/p&gt;
+&lt;p&gt;因为输出依赖于过去和当前的输入，该任务被称为&lt;strong&gt;因果语言建模&lt;/strong&gt;（causal language modeling）。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;在气象预测领域，也常常见到这个&lt;strong&gt;因果&lt;/strong&gt;（Causual）的概念。&lt;/p&gt;
+&lt;p&gt;我们在训练模型预测未来天气时，预测的结果同样依赖于过去的输入，而不能受未来时间天气的影响，这样的预测符合现实逻辑的。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img alt=&#34;causal_modeling&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/causal_modeling.svg&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;基于上下文（周围的词语）来预测句子中被遮盖掉的词语（masked word）。&lt;/p&gt;
+&lt;p&gt;这类任务称为&lt;strong&gt;遮盖语言建模&lt;/strong&gt;（masked language modeling）。&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&#34;masked_modeling&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/masked_modeling.svg&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;训练这类模型不需要人工标注数据，它们可以对训练过的语言产生&lt;em&gt;统计意义&lt;/em&gt;上的理解。但如果直接拿来完成特定任务，效果往往不好。&lt;/p&gt;
+&lt;h3 id=&#34;迁移学习&#34;&gt;迁移学习&lt;/h3&gt;
+&lt;p&gt;前面提到的预训练相当于是从头开始训练模型：所有模型的权重都被随机初始化，并在没有先验知识的情况下开始训练。显而易见的，这个过程不仅需要海量的训练数据，时间经济成本都非常高。&lt;/p&gt;
+&lt;p&gt;因此，大部分情况下，我们将别人预训练好的模型权重通过 &lt;em&gt;&lt;strong&gt;迁移学习&lt;/strong&gt;&lt;/em&gt; 应用到自己的模型中，使用自己的任务语料对模型进行“二次训练“，通过微调参数使模型适用于新任务。&lt;/p&gt;
+&lt;p&gt;例如，我们可以选择一个在大规模英文语料上预训练好的模型，使用 arXiv 语料进行微调，以生成一个面向学术/研究领域的模型。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;在绝大部分情况下，我们都应该尝试找到一个尽可能接近我们任务的预训练模型，然后微调它。&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这一点在气象领域同样适用。我曾经看到过一个研究（&lt;a href=&#34;https://arxiv.org/abs/2601.20342&#34;&gt;[2601.20342] StormDiT: A generative AI model bridges the 2-6 hour &amp;lsquo;gray zone&amp;rsquo; in precipitation nowcasting&lt;/a&gt;），它就使用了视频生成模型Cosmos-Predict2.5，然后再用气象数据训练它，最终得到气象领域的预测模型。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;transformer-结构&#34;&gt;Transformer 结构&lt;/h3&gt;
+&lt;p&gt;一个常见的Transformer架构示例图如下所示：&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/transformer%E6%9E%B6%E6%9E%84%E5%9B%BE.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;看着很复杂哦，首先简化一下：&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&#34;transformers_blocks&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/transformers_blocks.svg&#34;&gt;&lt;/p&gt;
+&lt;p&gt;一个标准的 Transformer 模型主要由两个模块构成：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Encoder（编码器）：负责理解输入文本，为每个输入构造对应的语义表示（语义特征）。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Decoder（解码器）：负责生成输出，使用Encoder输出的语义表示结合其他输入来生成目标序列。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;让我们详细看看两部分的内部结构：&lt;/p&gt;
+&lt;h4 id=&#34;编码器&#34;&gt;编码器&lt;/h4&gt;
+&lt;p&gt;编码器由 N 层相同的模块堆叠而成，每层包括两个子层：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;多头自注意力机制（Multi-Head Self-Attention）：计算输入序列中每个词与其他词的相关性。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;前馈神经网络（Feed-Forward Neural Network）：对每个词进行独立的非线性变换&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;每个子层后面都接有残差连接（Residual Connection）和层归一化（Layer Normalization）&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>混淆矩阵与 AUC：理解T/F/P/N分类评估指标</title>
+      <link>https://clarkflybee.github.io/posts/2026-02-04-auc-confusion-matrix-primer/</link>
+      <pubDate>Wed, 04 Feb 2026 19:22:30 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/2026-02-04-auc-confusion-matrix-primer/</guid>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;最近参与的医学场景的项目中，模型的评价指标之一是AUC。&lt;/p&gt;
+&lt;p&gt;要讲清楚这个指标，需要首先了解一个评价模型的经典工具：混淆矩阵。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;混淆矩阵--模型能不能明辨是非&#34;&gt;混淆矩阵 —— 模型能不能“明辨是非”&lt;/h2&gt;
+&lt;h3 id=&#34;基础定义&#34;&gt;基础定义&lt;/h3&gt;
+&lt;p&gt;我们训练AI模型，一个典型的任务是去预测一个事情是否会发生。&lt;/p&gt;
+&lt;p&gt;那医学场景举个例子：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;我们给模型输入过去手术的数据，让它学习其中的特征。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;我们的目的是希望训练后的模型在接受一段时间的手术数据输入后，给出未来一定时间内发生某类异常事件的&lt;strong&gt;可能性&lt;/strong&gt;。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;那么如何评价这个模型做的好不好呢？简单来说，需要记录预测结果与实际情况是否一致。我们定义：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;预测结果&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;预测为正例（Positive, &lt;strong&gt;P&lt;/strong&gt;）&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;预测为负例（Negative, &lt;strong&gt;N&lt;/strong&gt;）&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;实际情况&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;实际为正例&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;实际为负例&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;对于这四种情况排列组合，我们就会得到一个模型的&lt;strong&gt;混淆矩阵&lt;/strong&gt;（&lt;em&gt;&lt;strong&gt;Confusion Matrix&lt;/strong&gt;&lt;/em&gt;）：&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;&lt;/th&gt;
+          &lt;th&gt;预测为正例 &lt;strong&gt;P&lt;/strong&gt;&lt;/th&gt;
+          &lt;th&gt;预测为负例 &lt;strong&gt;N&lt;/strong&gt;&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;实际为正例&lt;/td&gt;
+          &lt;td&gt;TP（True Positive）&lt;/td&gt;
+          &lt;td&gt;FN（False Negative）&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;实际为负例&lt;/td&gt;
+          &lt;td&gt;FP（False Positive）&lt;/td&gt;
+          &lt;td&gt;TN（True Negative）&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;对于矩阵的四个象限，其含义分别为：&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;缩写&lt;/th&gt;
+          &lt;th&gt;含义&lt;/th&gt;
+          &lt;th&gt;场景&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;TP&lt;/td&gt;
+          &lt;td&gt;预测为正，实际为正&lt;/td&gt;
+          &lt;td&gt;✅ 正确识别阳性（如：有异常事件有警报）&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;TN&lt;/td&gt;
+          &lt;td&gt;预测为负，实际为负&lt;/td&gt;
+          &lt;td&gt;✅ 正确识别阴性（如：无异常事件无警报）&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;FP&lt;/td&gt;
+          &lt;td&gt;预测为正，实际为负&lt;/td&gt;
+          &lt;td&gt;❌ 误报（如：无异常事件有警报）&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;FN&lt;/td&gt;
+          &lt;td&gt;预测为负，实际为正&lt;/td&gt;
+          &lt;td&gt;❌ 漏报（如：有异常事件无警报）&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这里我经常搞糊涂，&lt;strong&gt;P&lt;/strong&gt;ositive和&lt;strong&gt;N&lt;/strong&gt;egative分别对应的是预测的情况。预测为正例，指预测内容为事件发生，在混淆矩阵中标记为&lt;strong&gt;P&lt;/strong&gt;，反之为&lt;strong&gt;N&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;但与预测情况相对的，实际情况为正例，并不意味着对应情况记作T。&lt;/p&gt;
+&lt;p&gt;事实上，当实际情况与预测内容相匹配时，才会记为&lt;strong&gt;T&lt;/strong&gt;；反之即为&lt;strong&gt;F&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;也就是说，&lt;strong&gt;T&lt;/strong&gt; 和 &lt;strong&gt;F&lt;/strong&gt; 并不是标记&lt;strong&gt;实际情况&lt;/strong&gt;中事件是否发生，而是表示实际情况与预测内容&lt;strong&gt;是否一致&lt;/strong&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;由混淆矩阵派生的关键指标&#34;&gt;由混淆矩阵派生的关键指标&lt;/h3&gt;
+&lt;p&gt;在实践中，混淆矩阵中的TP、FN、FP、TN通常是记录测试模型时，符合对应情况的测试样本数量。&lt;/p&gt;
+&lt;p&gt;比如说我们训练好了模型，测试时我们输入了1000个样本，结果分别为：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;400个样本被&lt;strong&gt;预测为会发生&lt;/strong&gt;异常事件&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;其中150个样本&lt;strong&gt;真的发生&lt;/strong&gt;了异常事件，250个样本&lt;strong&gt;没有发生&lt;/strong&gt;异常事件&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;600个样本被&lt;strong&gt;预测为不发生&lt;/strong&gt;异常事件&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;其中50个样本&lt;strong&gt;真的发生&lt;/strong&gt;了异常事件，550个样本&lt;strong&gt;没有发生&lt;/strong&gt;异常事件&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;此时，这个模型的混淆矩阵可以记为：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>第一篇博客</title>
+      <link>https://clarkflybee.github.io/posts/first-blog/</link>
+      <pubDate>Fri, 30 Jan 2026 16:17:15 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/first-blog/</guid>
+      <description>&lt;h2 id=&#34;一切的开始&#34;&gt;一切的开始&lt;/h2&gt;
+&lt;p&gt;是的，你正在看到的是我的第一篇博客。&lt;/p&gt;
+&lt;p&gt;我觉得用第一次编程的脚本作为第一篇博客的内容再合适不过了：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
+&lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt;1
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;nb&#34;&gt;print&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s2&#34;&gt;&amp;#34;Hello World!&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;这是我与编程的开始，我也把它作为我博客的开始。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

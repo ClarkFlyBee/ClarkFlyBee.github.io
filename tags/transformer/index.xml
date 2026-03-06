@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Transformer on ClarkFlyBee&#39;s Blog</title>
+    <link>https://clarkflybee.github.io/tags/transformer/</link>
+    <description>Recent content in Transformer on ClarkFlyBee&#39;s Blog</description>
+    <image>
+      <title>ClarkFlyBee&#39;s Blog</title>
+      <url>https://clarkflybee.github.io/images/show.png</url>
+      <link>https://clarkflybee.github.io/images/show.png</link>
+    </image>
+    <generator>Hugo -- 0.154.5</generator>
+    <language>zh-cn</language>
+    <copyright>2026 ClarkFlyBee · GitHub</copyright>
+    <lastBuildDate>Sun, 15 Feb 2026 11:12:29 +0800</lastBuildDate>
+    <atom:link href="https://clarkflybee.github.io/tags/transformer/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>从零开始的Transformer(1): 架构拆解</title>
+      <link>https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/</link>
+      <pubDate>Sun, 15 Feb 2026 11:12:29 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/</guid>
+      <description>&lt;p&gt;在如今的深度学习领域，Transformer架构已经称得上是&lt;strong&gt;经典模型&lt;/strong&gt;了。从最初的NLP自然语言处理到后来推广到计算机视觉领域，ChatGPT等一系列基于Transformer模型的产品，对世界带来翻天覆地的变化改变世界的充分说明了它的强大实力与重要作用。&lt;/p&gt;
+&lt;p&gt;作为深度学习领域的初学者，我想简单介绍这一经典架构的同时，用案例编码来学习模型的实际应用，为后续工作打打基础。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;值得一提的，本文中给出的案例大部分还是来自NLP领域。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;transformer-架构简介&#34;&gt;Transformer 架构简介&lt;/h2&gt;
+&lt;h3 id=&#34;语言模型&#34;&gt;语言模型&lt;/h3&gt;
+&lt;p&gt;正如前文所说，Transformer最开始解决的问题是自然语言处理。Transformer 模型本质上都是预训练&lt;strong&gt;语言模型&lt;/strong&gt;，在大量生语料上进行训练。我们可以看到两类常见的任务：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;基于句子前$n$个词来预测下一个词。&lt;/p&gt;
+&lt;p&gt;因为输出依赖于过去和当前的输入，该任务被称为&lt;strong&gt;因果语言建模&lt;/strong&gt;（causal language modeling）。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;在气象预测领域，也常常见到这个&lt;strong&gt;因果&lt;/strong&gt;（Causual）的概念。&lt;/p&gt;
+&lt;p&gt;我们在训练模型预测未来天气时，预测的结果同样依赖于过去的输入，而不能受未来时间天气的影响，这样的预测符合现实逻辑的。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img alt=&#34;causal_modeling&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/causal_modeling.svg&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;基于上下文（周围的词语）来预测句子中被遮盖掉的词语（masked word）。&lt;/p&gt;
+&lt;p&gt;这类任务称为&lt;strong&gt;遮盖语言建模&lt;/strong&gt;（masked language modeling）。&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&#34;masked_modeling&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/masked_modeling.svg&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;训练这类模型不需要人工标注数据，它们可以对训练过的语言产生&lt;em&gt;统计意义&lt;/em&gt;上的理解。但如果直接拿来完成特定任务，效果往往不好。&lt;/p&gt;
+&lt;h3 id=&#34;迁移学习&#34;&gt;迁移学习&lt;/h3&gt;
+&lt;p&gt;前面提到的预训练相当于是从头开始训练模型：所有模型的权重都被随机初始化，并在没有先验知识的情况下开始训练。显而易见的，这个过程不仅需要海量的训练数据，时间经济成本都非常高。&lt;/p&gt;
+&lt;p&gt;因此，大部分情况下，我们将别人预训练好的模型权重通过 &lt;em&gt;&lt;strong&gt;迁移学习&lt;/strong&gt;&lt;/em&gt; 应用到自己的模型中，使用自己的任务语料对模型进行“二次训练“，通过微调参数使模型适用于新任务。&lt;/p&gt;
+&lt;p&gt;例如，我们可以选择一个在大规模英文语料上预训练好的模型，使用 arXiv 语料进行微调，以生成一个面向学术/研究领域的模型。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;在绝大部分情况下，我们都应该尝试找到一个尽可能接近我们任务的预训练模型，然后微调它。&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这一点在气象领域同样适用。我曾经看到过一个研究（&lt;a href=&#34;https://arxiv.org/abs/2601.20342&#34;&gt;[2601.20342] StormDiT: A generative AI model bridges the 2-6 hour &amp;lsquo;gray zone&amp;rsquo; in precipitation nowcasting&lt;/a&gt;），它就使用了视频生成模型Cosmos-Predict2.5，然后再用气象数据训练它，最终得到气象领域的预测模型。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;transformer-结构&#34;&gt;Transformer 结构&lt;/h3&gt;
+&lt;p&gt;一个常见的Transformer架构示例图如下所示：&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/transformer%E6%9E%B6%E6%9E%84%E5%9B%BE.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;看着很复杂哦，首先简化一下：&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&#34;transformers_blocks&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/transformers_blocks.svg&#34;&gt;&lt;/p&gt;
+&lt;p&gt;一个标准的 Transformer 模型主要由两个模块构成：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Encoder（编码器）：负责理解输入文本，为每个输入构造对应的语义表示（语义特征）。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Decoder（解码器）：负责生成输出，使用Encoder输出的语义表示结合其他输入来生成目标序列。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;让我们详细看看两部分的内部结构：&lt;/p&gt;
+&lt;h4 id=&#34;编码器&#34;&gt;编码器&lt;/h4&gt;
+&lt;p&gt;编码器由 N 层相同的模块堆叠而成，每层包括两个子层：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;多头自注意力机制（Multi-Head Self-Attention）：计算输入序列中每个词与其他词的相关性。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;前馈神经网络（Feed-Forward Neural Network）：对每个词进行独立的非线性变换&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;每个子层后面都接有残差连接（Residual Connection）和层归一化（Layer Normalization）&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>
