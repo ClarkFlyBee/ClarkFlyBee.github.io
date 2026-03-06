@@ -31,6 +31,8 @@ class DiffusionConfig:
     cfg_scale: float = 2.0      # Classifier-free guidance 强度
     cfg_dropout: float = 0.1    # 训练时条件丢弃概率
 
+    device: str = "cpu"
+
 @dataclass
 class TrainConfig:
     """训练配置"""
