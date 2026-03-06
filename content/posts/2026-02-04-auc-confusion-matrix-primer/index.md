@@ -10,7 +10,6 @@ tags = [
   "machine-learning", 
   "auc", 
   "confusion-matrix", 
-  "tutorial", 
   "python"
 ]
 +++
