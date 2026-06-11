@@ -5,8 +5,18 @@ title = '操作系统实践——知识点与小demo总结（Linux 进程管理�
 ShowToc = false
 math = false
 categories = ["cheatsheet"]
-tags = ["OS", "linux"]
+tags = ["OS", "linux", "Thread", "Process", "pipe"]
 +++
+
+{{< callout type="info" title="写在前面" >}}
+
+本文尚未完成，但近期不会补充完整。
+
+这里记录一下还需要写的部分：
+
+- 实验代码与解析
+
+{{< /callout >}}
 
 ## 实验3：Linux 进程管理
 
