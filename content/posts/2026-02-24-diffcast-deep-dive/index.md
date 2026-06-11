@@ -1,12 +1,28 @@
 +++
 date = '2026-02-24T20:32:24+08:00'
-draft = true
-title = '”残差扩散“拯救短临降水预测？DiffCast论文阅读'
+draft = false
+title = '“残差扩散”拯救短临降水预测？DiffCast论文阅读'
 ShowToc = false
 math = true
-categories = ["draft"]
-tags = []
+categories = ["paper-reading"]
+tags = [
+   "DiffCast", 
+   "DDPM", 
+   "Precipitation-Nowcasting"
+]
 +++
+
+{{< callout type="info" title="写在前面" >}}
+
+本文尚未完成，但近期不会补充完整。
+
+这里记录一下还需要写的部分：
+
+- 论文方法部分尚未完成
+- 实验结果与分析
+- 复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难）
+
+{{< /callout >}}
 
 在刚接触气象领域研究时，学长推荐我阅读《[DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting](https://arxiv.org/abs/2312.06734)》这篇论文，说可以参考学习**扩散模型**如何应用在气象领域，解决短临降水问题。
 
