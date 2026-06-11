@@ -6,7 +6,6 @@ ShowToc = false
 math = true
 categories = ["tutorial"]
 tags = [
-    "deep-learning",
     "transformer",
     "pytorch",
     "multi-head-attention",

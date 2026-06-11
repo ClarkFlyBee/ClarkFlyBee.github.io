@@ -7,7 +7,6 @@ ShowToc = false
 categories = ["notes"]
 tags = [
   "medts", 
-  "machine-learning", 
   "auc", 
   "confusion-matrix", 
   "python"
