@@ -1,11 +1,15 @@
 +++
 date = '2026-04-07T14:43:01+08:00'
-draft = true
+draft = false
 title = '操作系统实践——知识点与小demo总结（简单文件系统的实现）'
 ShowToc = false
 math = false
 categories = ["cheatsheet"]
-tags = ["OS", "linux"]
+tags = [
+    "OS", 
+    "linux", 
+    "File System"
+]
 +++
 
 ## 实验5：简单文件系统的实现
