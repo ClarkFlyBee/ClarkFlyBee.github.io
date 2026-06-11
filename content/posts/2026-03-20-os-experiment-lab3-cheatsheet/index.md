@@ -1,6 +1,6 @@
 +++
 date = '2026-03-20T15:25:36+08:00'
-draft = true
+draft = false
 title = '操作系统实践——知识点与小demo总结（Linux 进程管理）'
 ShowToc = false
 math = false
