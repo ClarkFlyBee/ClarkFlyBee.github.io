@@ -14,3 +14,76 @@
     font-size: 1.05em;
     font-weight: 600;
 }
+
+
+/* Callout 高亮块样式 */
+/* 修复：使用 CSS 变量适配明暗模式 */
+.callout {
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1.5em 0;
+  border-left: 4px solid;
+  /* 关键修复：使用 theme 变量，而非固定颜色 */
+  color: var(--content, #212529);
+  background-color: var(--code-bg, #f8f9fa);
+  transition: all 0.2s ease;
+}
+
+/* 暗色模式全局覆盖 */
+.dark .callout {
+  color: var(--content, #e2e8f0);        /* 夜间用浅灰白 */
+  background-color: var(--code-bg, #1e293b); /* 夜间用深蓝灰 */
+}
+
+/* 标题颜色继承 */
+.callout-header {
+  color: inherit;  /* 继承 callout 的文字颜色 */
+  font-weight: 700;
+  font-size: 1.05em;
+}
+
+/* 不同类型：只保留边框色，背景用透明叠加 */
+.callout-info {
+  border-left-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.08);
+}
+.callout-warning {
+  border-left-color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.08);
+}
+.callout-tip {
+  border-left-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.08);
+}
+.callout-danger {
+  border-left-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.08);
+}
+.callout-success {
+  border-left-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.08);
+}
+.callout-note {
+  border-left-color: #64748b;
+  background-color: rgba(100, 116, 139, 0.08);
+}
+
+/* 暗色模式下提高背景透明度，让文字更清晰 */
+.dark .callout-info {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+.dark .callout-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+}
+.dark .callout-tip {
+  background-color: rgba(16, 185, 129, 0.15);
+}
+.dark .callout-danger {
+  background-color: rgba(239, 68, 68, 0.15);
+}
+.dark .callout-success {
+  background-color: rgba(34, 197, 94, 0.15);
+}
+.dark .callout-note {
+  background-color: rgba(100, 116, 139, 0.15);
+}

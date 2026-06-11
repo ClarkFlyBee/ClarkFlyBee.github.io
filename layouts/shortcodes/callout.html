@@ -1,0 +1,25 @@
+{{ $type := .Get "type" | default "info" }}
+{{ $icon := .Get "icon" | default "" }}
+{{ $title := .Get "title" | default "" }}
+
+{{/* 根据类型设置默认 emoji */}}
+{{ $defaultIcon := "ℹ️" }}
+{{ if eq $type "warning" }}{{ $defaultIcon = "⚠️" }}{{ end }}
+{{ if eq $type "tip" }}{{ $defaultIcon = "💡" }}{{ end }}
+{{ if eq $type "danger" }}{{ $defaultIcon = "🚨" }}{{ end }}
+{{ if eq $type "success" }}{{ $defaultIcon = "✅" }}{{ end }}
+{{ if eq $type "note" }}{{ $defaultIcon = "📝" }}{{ end }}
+
+{{/* 优先使用用户传入的 icon */}}
+{{ $finalIcon := $icon }}
+{{ if eq $icon "" }}{{ $finalIcon = $defaultIcon }}{{ end }}
+
+<div class="callout callout-{{ $type }}">
+  <div class="callout-header">
+    <span class="callout-icon">{{ $finalIcon }}</span>
+    <span class="callout-title">{{ $title }}</span>
+  </div>
+  <div class="callout-content">
+    {{ .Inner | markdownify }}
+  </div>
+</div>
