@@ -1,19 +1,30 @@
 +++
 date = '2026-02-06T20:09:38+08:00'
-draft = true
+draft = false
 title = 'Transformer + 扩散模型：DiT 入门'
 ShowToc = false
 math = true
-categories = ["draft"]
+categories = ["tutorial"]
 tags = [
-    "deep-learning",
     "transformer",
-    "pytorch",
-    "python",
     "DDPM",
-    "DiT"
+    "DiT",
+    "python",
+    "pytorch"
 ]
 +++
+
+{{< callout type="info" title="写在前面" >}}
+
+本文尚未完成，但近期不会补充完整。
+
+这里记录一下还需要写的部分：
+
+- `diffusion.py` 的代码解析
+- DiT 模型小实验的整体运行效果
+- 参考文献也需要补充 
+
+{{< /callout >}}
 
 > 本文内容基于论文 [Scalable Diffusion Models with Transformers](https://arxiv.org/abs/2212.09748)。
 > 
