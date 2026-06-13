@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="zh-cn" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>操作系统实践——知识点与小demo总结（Linux 进程管理） | ClarkFlyBee&#39;s Blog</title>
+<meta name="keywords" content="OS, linux, Thread, Process, pipe">
+<meta name="description" content="
+  
+    ℹ️
+    写在前面
+  
+  
+    本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+
+实验代码与解析
+
+
+  
+
+实验3：Linux 进程管理
+基本原理与知识点
+
+
+读端与写端的区分
+piep() 系统调用中：
+
+
+fd[0] 是读端
+
+
+fd[1] 是写端
+
+
+
+
+close() 怎么理解
+通俗易懂的说，我们可以把文件描述符理解为电话号码。
+
+
+1
+2
+
+
+pipe(fd)    // 创建管道；相当于申请了一对专线电话，
+           // 其中一条只能听（fd[0]），一条只能说（fd[1]）
+
+
+假设pipe(fd) 后，fd[0]=3，fd[1]=4。
+子进程创建后，会复制父进程的整个”通讯录“，而不是新建管道。
+也就是说在子进程中，依然是fd[0]=3，fd[1]=4。
+让我们回到 close() ，可以这样理解，一个进程执行 close(fd[1]) ，意味着它删除了这条拿来说的电话线（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。
+但值得注意的是，父进程 close(fd[1]) 后，子进程不受影响，子进程依然可以写数据。
+
+一句话总结：每个进程有自己的 fd，但指向同一个管道。close() 只是减少该管道在这个进程中的引用。
+
+
+
+read() 函数返回什么？
+read() 的典型用法如下所示：
+
+
+1
+
+
+ssize_t n = read(fd, buf, count);
+
+
+
+  
+      
+          返回值
+          含义
+          场景
+      
+  
+  
+      
+          &gt; 0
+          实际读取的字节数
+          正常情况，可能小于 count（短读）
+      
+      
+          0
+          EOF（文件结束）
+          所有写端都已关闭
+      
+      
+          -1
+          出错
+          被信号中断、非阻塞无数据等
+      
+  
+
+
+
+创建管道时，读写两端自动打开，无需 open()
+
+
+文件描述符（fd）是啥？
+文件描述符是进程级别的”文件句柄“，是一个非负整数（0,1,2,3，&hellip;）。
+可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个表格的整数索引。
+进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。
+
+
+fd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。">
+<meta name="author" content="ClarkFlyBee">
+<link rel="canonical" href="https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://clarkflybee.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://clarkflybee.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://clarkflybee.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://clarkflybee.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://clarkflybee.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="zh-cn" href="https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/">
+  <meta property="og:site_name" content="ClarkFlyBee&#39;s Blog">
+  <meta property="og:title" content="操作系统实践——知识点与小demo总结（Linux 进程管理）">
+  <meta property="og:description" content="ℹ️写在前面本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+实验代码与解析 实验3：Linux 进程管理 基本原理与知识点 读端与写端的区分 piep() 系统调用中：
+fd[0] 是读端
+fd[1] 是写端
+close() 怎么理解 通俗易懂的说，我们可以把文件描述符理解为电话号码。
+1 2 pipe(fd) // 创建管道；相当于申请了一对专线电话， // 其中一条只能听（fd[0]），一条只能说（fd[1]） 假设pipe(fd) 后，fd[0]=3，fd[1]=4。
+子进程创建后，会复制父进程的整个”通讯录“，而不是新建管道。
+也就是说在子进程中，依然是fd[0]=3，fd[1]=4。
+让我们回到 close() ，可以这样理解，一个进程执行 close(fd[1]) ，意味着它删除了这条拿来说的电话线（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。
+但值得注意的是，父进程 close(fd[1]) 后，子进程不受影响，子进程依然可以写数据。
+一句话总结：每个进程有自己的 fd，但指向同一个管道。close() 只是减少该管道在这个进程中的引用。
+read() 函数返回什么？ read() 的典型用法如下所示：
+1 ssize_t n = read(fd, buf, count); 返回值 含义 场景 &gt; 0 实际读取的字节数 正常情况，可能小于 count（短读） 0 EOF（文件结束） 所有写端都已关闭 -1 出错 被信号中断、非阻塞无数据等 创建管道时，读写两端自动打开，无需 open() 文件描述符（fd）是啥？ 文件描述符是进程级别的”文件句柄“，是一个非负整数（0,1,2,3，…）。
+可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个表格的整数索引。
+进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。
+fd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。">
+  <meta property="og:locale" content="zh-cn">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2026-03-20T15:25:36+08:00">
+    <meta property="article:modified_time" content="2026-03-20T15:25:36+08:00">
+    <meta property="article:tag" content="OS">
+    <meta property="article:tag" content="Linux">
+    <meta property="article:tag" content="Thread">
+    <meta property="article:tag" content="Process">
+    <meta property="article:tag" content="Pipe">
+      <meta property="og:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:title" content="操作系统实践——知识点与小demo总结（Linux 进程管理）">
+<meta name="twitter:description" content="
+  
+    ℹ️
+    写在前面
+  
+  
+    本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+
+实验代码与解析
+
+
+  
+
+实验3：Linux 进程管理
+基本原理与知识点
+
+
+读端与写端的区分
+piep() 系统调用中：
+
+
+fd[0] 是读端
+
+
+fd[1] 是写端
+
+
+
+
+close() 怎么理解
+通俗易懂的说，我们可以把文件描述符理解为电话号码。
+
+
+1
+2
+
+
+pipe(fd)    // 创建管道；相当于申请了一对专线电话，
+           // 其中一条只能听（fd[0]），一条只能说（fd[1]）
+
+
+假设pipe(fd) 后，fd[0]=3，fd[1]=4。
+子进程创建后，会复制父进程的整个”通讯录“，而不是新建管道。
+也就是说在子进程中，依然是fd[0]=3，fd[1]=4。
+让我们回到 close() ，可以这样理解，一个进程执行 close(fd[1]) ，意味着它删除了这条拿来说的电话线（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。
+但值得注意的是，父进程 close(fd[1]) 后，子进程不受影响，子进程依然可以写数据。
+
+一句话总结：每个进程有自己的 fd，但指向同一个管道。close() 只是减少该管道在这个进程中的引用。
+
+
+
+read() 函数返回什么？
+read() 的典型用法如下所示：
+
+
+1
+
+
+ssize_t n = read(fd, buf, count);
+
+
+
+  
+      
+          返回值
+          含义
+          场景
+      
+  
+  
+      
+          &gt; 0
+          实际读取的字节数
+          正常情况，可能小于 count（短读）
+      
+      
+          0
+          EOF（文件结束）
+          所有写端都已关闭
+      
+      
+          -1
+          出错
+          被信号中断、非阻塞无数据等
+      
+  
+
+
+
+创建管道时，读写两端自动打开，无需 open()
+
+
+文件描述符（fd）是啥？
+文件描述符是进程级别的”文件句柄“，是一个非负整数（0,1,2,3，&hellip;）。
+可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个表格的整数索引。
+进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。
+
+
+fd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "文章",
+      "item": "https://clarkflybee.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "操作系统实践——知识点与小demo总结（Linux 进程管理）",
+      "item": "https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "操作系统实践——知识点与小demo总结（Linux 进程管理）",
+  "name": "操作系统实践——知识点与小demo总结（Linux 进程管理）",
+  "description": "\rℹ️\r写在前面\r本文尚未完成，但近期不会补充完整。\n这里记录一下还需要写的部分：\n实验代码与解析 实验3：Linux 进程管理 基本原理与知识点 读端与写端的区分 piep() 系统调用中：\nfd[0] 是读端\nfd[1] 是写端\nclose() 怎么理解 通俗易懂的说，我们可以把文件描述符理解为电话号码。\n1 2 pipe(fd) // 创建管道；相当于申请了一对专线电话， // 其中一条只能听（fd[0]），一条只能说（fd[1]） 假设pipe(fd) 后，fd[0]=3，fd[1]=4。\n子进程创建后，会复制父进程的整个”通讯录“，而不是新建管道。\n也就是说在子进程中，依然是fd[0]=3，fd[1]=4。\n让我们回到 close() ，可以这样理解，一个进程执行 close(fd[1]) ，意味着它删除了这条拿来说的电话线（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。\n但值得注意的是，父进程 close(fd[1]) 后，子进程不受影响，子进程依然可以写数据。\n一句话总结：每个进程有自己的 fd，但指向同一个管道。close() 只是减少该管道在这个进程中的引用。\nread() 函数返回什么？ read() 的典型用法如下所示：\n1 ssize_t n = read(fd, buf, count); 返回值 含义 场景 \u0026gt; 0 实际读取的字节数 正常情况，可能小于 count（短读） 0 EOF（文件结束） 所有写端都已关闭 -1 出错 被信号中断、非阻塞无数据等 创建管道时，读写两端自动打开，无需 open() 文件描述符（fd）是啥？ 文件描述符是进程级别的”文件句柄“，是一个非负整数（0,1,2,3，\u0026hellip;）。\n可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个表格的整数索引。\n进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。\nfd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。\n",
+  "keywords": [
+    "OS", "linux", "Thread", "Process", "pipe"
+  ],
+  "articleBody": "\rℹ️\r写在前面\r本文尚未完成，但近期不会补充完整。\n这里记录一下还需要写的部分：\n实验代码与解析 实验3：Linux 进程管理 基本原理与知识点 读端与写端的区分 piep() 系统调用中：\nfd[0] 是读端\nfd[1] 是写端\nclose() 怎么理解 通俗易懂的说，我们可以把文件描述符理解为电话号码。\n1 2 pipe(fd) // 创建管道；相当于申请了一对专线电话， // 其中一条只能听（fd[0]），一条只能说（fd[1]） 假设pipe(fd) 后，fd[0]=3，fd[1]=4。\n子进程创建后，会复制父进程的整个”通讯录“，而不是新建管道。\n也就是说在子进程中，依然是fd[0]=3，fd[1]=4。\n让我们回到 close() ，可以这样理解，一个进程执行 close(fd[1]) ，意味着它删除了这条拿来说的电话线（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。\n但值得注意的是，父进程 close(fd[1]) 后，子进程不受影响，子进程依然可以写数据。\n一句话总结：每个进程有自己的 fd，但指向同一个管道。close() 只是减少该管道在这个进程中的引用。\nread() 函数返回什么？ read() 的典型用法如下所示：\n1 ssize_t n = read(fd, buf, count); 返回值 含义 场景 \u003e 0 实际读取的字节数 正常情况，可能小于 count（短读） 0 EOF（文件结束） 所有写端都已关闭 -1 出错 被信号中断、非阻塞无数据等 创建管道时，读写两端自动打开，无需 open() 文件描述符（fd）是啥？ 文件描述符是进程级别的”文件句柄“，是一个非负整数（0,1,2,3，…）。\n可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个表格的整数索引。\n进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。\nfd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。\nfork() 创建子进程会复制 fd，但指向同一个内核对象\nfd值有常见的约定：\nfd 值 含义 对应 C 常量 0 标准输入（stdin） STDIN_FILENO 1 标准输出（stdout） STDOUT_FILENO 2 标准错误（stderr） STDERR_FILENO ≥3 用户打开的文件/管道 pipe(fd) 做了什么？ 在管道实验中，我们常会看到：\n1 2 int fd[2]; pipe(fd); fd初始化时是空的，pipe(fd)后，创建一个新的管道，并分配两个文件描述符，对管道的读端与写端。\n这里我们能进一步理解文件描述符的本质：它就是一个数，用来标识一个内核资源。\n写端、读端是否需要关闭？ 一句话讲明：不关闭不需要的端会导致 read() 永远阻塞。\n写数据的进程不关闭读端（fd[0]）\n能写入，不受影响。\n当所有写端都关闭后，读端应该收到 EOF（read() 返回 0），但如果你自己还开着读端，系统认为“还有进程可能写入”，读端会永远阻塞在 read() 上。\n读数据的进程不关闭写端（fd[1]）\n能读取，如果管道里有数据就可以正常读。\n当管道读空后，read() 不会返回0（EOF），而是阻塞等待，因为系统看到你还开着写端，认为“迟早还要写数据进来”。\n一句话解释：管道是单向通信。\n关闭写/读端，减少引用计数 这个计数可以涉及两方面：\n文件结构体的引用计数\n调用 pipe(fd) 时，内核会创建：\n两个 struct file 对象（代表管道的两端）\n一个底层的 pipe_inode_info （管道的实际缓冲区）\n每个进程持有文件描述符（fd）时，内核中的 struct file 的引用计数（f_count）会增加：\nfork() 时，子进程继承 fd，引用计数 +1\nclose() 时，引用计数 -1\n当这个引用计数降到0，内核才释放这个文件结构体。\n管道的“写者计数”（Writer Count）\n管道内部同样存在写端计数器。内核需要知道：“还有没有进程要往这个管道写数据？”\n调用 close(fd[1]) 时，内核执行：\n减少 file 结构体的引用计数\n检查这是否是最后一个写端。\n如果是，唤醒阻塞的读进程，让它们知道“不会再有数据了”。\n我们看到一个反面教材：\n父进程：read(fd[0])，阻塞等待数据\n子进程：write(fd[1])，写入消息\n子进程：close(fd[1])，但 fd[0] 还开着！！\n此时，虽然子进程写完且关闭了写端，但还持有读端，内核认为：\n还有进程持有读端，它可能 fork 出新的子进程来继续写入\n因此，计数不会变成0，父进程的 read() 会永远阻塞。\n管道阻塞场景 既然说到阻塞，我们来看几种阻塞场景\n读空管：当管道中没有数据时，read 会阻塞，知道有进程写数据才被唤醒\n写满管：管道有容量限制（通常是64KB）。管道满时，写进程必须等读进程“腾出空间”\n多写一端关闭：当有多个写进程时，只要还有一个写进程持有 fd[1]，读端会认为”还可能有人写“，继续阻塞； read 返回 0，表示所有写端都关闭了。\n阻塞是线程安全的，唤醒是有序的：\n这个场景稍微复杂些：\n父进程开始读，此时管道是空的，阻塞ing\n子进程依次分别写消息\n情况出现了！！ 父进程读到子进程1的数据，直接返回，结束。\nread是流式读取，有数据就读。\n如果需要父进程读完全部数据，必须让子进程全部写完，再读。\n这也是我们实验的重点之一。\nPOSIX 有名信号量 核心API（四个动作） 函数 作用 关键参数 sem_open(name, flags, mode, value) 创建或打开 name 必须以 / 开头（如 \"/my_sem\"）；O_CREAT 创建；value 初始值 sem_wait(sem) P 操作（等待） 值 \u003e 0 则减 1 并返回；值 = 0 则阻塞 sem_post(sem) V 操作（释放） 值加 1；若有进程等待，唤醒其中一个 sem_close(sem) 关闭句柄 进程退出时自动调用，但不删除信号量本身 sem_unlink(name) 删除信号量 从系统中移除；若其他进程正持有，待其 close 后销毁 这里展开讲讲 sem_open 的第2，3个参数：\n标志位：控制打开方式，常用按位或（|）组合\n标志 含义 效果 O_CREAT 创建模式 信号量不存在则创建，存在则直接打开（最常用） O_EXCL 排他创建 必须与 O_CREAT 配合使用，若信号量已存在则报错（防止重复初始化） O_RDWR 读写打开 隐式默认，无需显式指定 1 2 sem_open(\"/my_sem\", O_CREAT | O_EXCL, 0644, 1); // 强制新建，已存在则失败（适合初始化进程） sem_open(\"/my_sem\", O_CREAT, 0644, 1); // 通用模式：没有就建，有就直接用 权限位：仅当实际创建新信号量时生效（如果信号量已存在，此参数被忽略）\n采用 Unix 标准权限格式，通常写为 八进制数。\n有名信号量在内核中对应一个特殊文件（/dev/shm/sem.my_sem）\n0（特殊位）6（文件所有者权限）4（组用户权限）4（其他用户权限）\n0644表示：创建者可读写，其他进程只能读（无法修改信号量值，但可查询状态）\n常见取值：\n0644：普通共享（所有用户可读，仅所有者可写）\n0666：完全共享（所有用户可读写，风险较高）\n0600：私有（仅创建者自身进程可访问）\n典型使用流程 1 2 3 4 5 6 7 8 9 10 11 // 1. 创建/打开（类似 open()） sem_t *sem = sem_open(\"/project_lock\", O_CREAT, 0644, 1); // 2. 临界区保护 sem_wait(sem); // 进入，获取锁 // ... 访问共享资源 sem_post(sem); // 退出，释放锁 // 3. 清理（必须显式删除！） sem_close(sem); sem_unlink(\"/project_lock\"); // 通常由最后一个进程或初始化进程执行 值得注意的：有名信号量生命周期独立于进程，即使创建进程仍存活，其他进程可继续打开使用。\n这也是和无名信号量（sem_init）的区别之一，无名信号量会随进程结束自动销毁，它仅适用于 fork 后的父子进程。\n题目2：实现一个管道通信程序 由父进程创建一个管道，然后再创建3个子进程，并由这三个子进程利用管道与父进程之间进行通信：子进程发送信息，父进程等三个子进程全部发完消息后再接收信息。\n通信的具体内容可根据自己的需要随意设计，要求能试验阻塞型读写过程中的各种情况，测试管道的默认大小，并且要求利用Posix信号量机制实现进程间对管道的互斥访问。\n运行程序，观察各种情况下，进程实际读写的字节数以及进程阻塞唤醒的情况。\n我们先来通过一些小demo看看管道的基本使用方法\n值得注意的：demo中有一些不严谨的写法（如写进程完成写后，没有关闭写端，而是直接return 0），或许不会导致运行问题（进程退出时会自动清理），但在正式实验中不可以这样写。\ndemo1：基础管道（验证单向通信） 父进程写，子进程读\n1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 #include #include #include int main() { int fd[2]; pipe(fd); if (fork() == 0) { // 子进程：读 close(fd[1]); // 关闭写端 char buf[100]; printf(\"子进程：等待数据...\\n\"); int n = read(fd[0], buf, sizeof(buf)); printf(\"子进程：读到 %d 字节：%s\\n\", n, buf); } else { // 父进程：写 close(fd[0]); sleep(2); // 观察子进程是否阻塞 write(fd[1], \"Hello\", 5); printf(\"父进程：已发送\\n\"); } return 0; } 子进程：等待数据…\n（阻塞2秒）\n父进程：已发送\n子进程：读到 5 字节：Hello\ndemo2：管道容量测试（观察阻塞） 管道满时，写阻塞\n原子性写入限制：要么都写，要么都不写，没有部分写\n1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 #include #include #include int main() { int fd[2]; pipe(fd); // 设置为非阻塞（仅用于演示容量） fcntl(fd[1], F_SETFL, O_NONBLOCK); int count = 0; char buf[4096]; // 4KB // 不断写入直到阻塞 while (1) { int n = write(fd[1], buf, sizeof(buf)); if (n \u003c 0) { perror(\"write\"); break; } count += n; printf(\"已写入：%d bytes\\n\", count); } } 已写入：4096 bytes\n已写入：8192 bytes\n已写入：12288 bytes\n……\n已写入：65536 bytes\nwrite: Resource temporarily unavailable\ndemo4：数据混杂问题 3个子进程同时写，会导致数据混杂，这也是为什么正式实验需要引入信号量机制\n1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 #include #include #include #include #include int main() { int fd[2]; if (pipe(fd) == -1) { perror(\"pipe\"); exit(1); } for (int i = 0; i \u003c 3; i++) { pid_t pid = fork(); if (pid == -1) { // 检查 fork 失败 perror(\"fork\"); exit(1); } if (pid == 0) { // 子进程 close(fd[0]); // 关闭读端 char msg = '0' + i; for (int j = 0; j \u003c 100; j++) { if (write(fd[1], \u0026msg, 1) != 1) { perror(\"write\"); exit(1); } usleep(1000); // 1000 微秒（1毫秒），避免过快 } printf(\"子进程 %d 写完\\n\", i); fflush(stdout); // 确保输出立即显示 close(fd[1]); // 显式关闭写端（好习惯） exit(0); // 使用 exit 而非 return，明确结束进程 } } // 父进程 close(fd[1]); // 必须关闭写端，否则 read 永远阻塞 char result[301]; int total = 0; int n; // 循环读取直到 EOF，而不是一次性读 300（更健壮） while ((n = read(fd[0], result + total, 300 - total)) \u003e 0) { total += n; } result[total] = '\\0'; printf(\"实际读取 %d 字节，结果：%s\\n\", total, result); // 等待所有子进程结束，避免僵尸进程 for (int i = 0; i \u003c 3; i++) { wait(NULL); } return 0; } 子进程 1 写完\n子进程 0 写完\n实际读取 300 字节，结果：012102100212101020122010212011201201201020210210021021021020101201201221002101212021021012021010212021021012012012012210102120021120201210212102012012012012210021021120210201021201201021021200122101202100120120120120121002112010210201201210201102102021012012010120122101202102101210201220120102120122\n子进程 2 写完\n（多进程并发时，子进程实际开始、打印、结束顺序是混杂的）\ndemo4：POSIX 有名信号量基础 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 #include #include #include #include #include int main() { // 创建有名信号量，初值为 1（互斥锁） // 参数：名字（必须以 / 开头），标志，权限，初值 sem_t *sem = sem_open(\"/my_sem\", O_CREAT, 0644, 1); if (fork() == 0) { printf(\"子进程：等待信号量...\\n\"); sem_wait(sem); printf(\"子进程：获得锁，持有3秒...\\n\"); sleep(3); printf(\"子进程：释放锁\\n\"); sem_post(sem); // V操作，值从0变1，释放锁 sem_close(sem); return 0; } sleep(1); // 确保子进程先拿到锁 printf(\"父进程：等待信号量...\\n\"); sem_wait(sem); // 此时值为0，阻塞，等待子进程释放 printf(\"父进程：获得锁\\n\"); sem_post(sem); sem_close(sem); sem_unlink(\"/my_sem\"); // 删除信号量（清理） return 0; } 子进程：等待信号量…\n子进程：获得锁，持有3秒…\n（阻塞3秒）\n父进程：等待信号量…\n（等待一段时间）\n子进程：释放锁\n父进程：获得锁\n注意！！ 这个源代码的编译命令不一样：\n1 gcc lab3-2-demo.c -o -pthread -pthread 是 GCC 的 POSIX 线程支持选项，它告诉编译器：\n预处理阶段：定义 _REENTRANT 宏（表示可重入代码）\n链接阶段：自动链接 libpthread 线程库\n实验代码 ",
+  "wordCount" : "886",
+  "inLanguage": "zh-cn",
+  "image": "https://clarkflybee.github.io/images/show.png","datePublished": "2026-03-20T15:25:36+08:00",
+  "dateModified": "2026-03-20T15:25:36+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "ClarkFlyBee"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ClarkFlyBee's Blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://clarkflybee.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://clarkflybee.github.io/" accesskey="h" title="ClarkFlyBee&#39;s Blog (Alt + H)">ClarkFlyBee&#39;s Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://clarkflybee.github.io/" title="首页">
+                    <span>首页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/posts/" title="文章">
+                    <span>文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/tags/" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/categories/" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/about/" title="关于">
+                    <span>关于</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      操作系统实践——知识点与小demo总结（Linux 进程管理）
+    </h1>
+    <div class="post-meta"><span title='2026-03-20 15:25:36 +0800 CST'>March 20, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span>
+
+</div>
+  </header> 
+  <div class="post-content">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="callout callout-info">
+  <div class="callout-header">
+    <span class="callout-icon">ℹ️</span>
+    <span class="callout-title">写在前面</span>
+  </div>
+  <div class="callout-content">
+    <p>本文尚未完成，但近期不会补充完整。</p>
+<p>这里记录一下还需要写的部分：</p>
+<ul>
+<li>实验代码与解析</li>
+</ul>
+
+  </div>
+</div>
+<h2 id="实验3linux-进程管理">实验3：Linux 进程管理<a hidden class="anchor" aria-hidden="true" href="#实验3linux-进程管理">#</a></h2>
+<h3 id="基本原理与知识点">基本原理与知识点<a hidden class="anchor" aria-hidden="true" href="#基本原理与知识点">#</a></h3>
+<ol>
+<li>
+<h4 id="读端与写端的区分"><strong>读端与写端的区分</strong><a hidden class="anchor" aria-hidden="true" href="#读端与写端的区分">#</a></h4>
+<p><code>piep()</code> 系统调用中：</p>
+<ul>
+<li>
+<p><strong>fd[0]</strong> 是<strong>读端</strong></p>
+</li>
+<li>
+<p><strong>fd[1]</strong> 是<strong>写端</strong></p>
+</li>
+</ul>
+</li>
+<li>
+<h4 id="close-怎么理解">close() 怎么理解<a hidden class="anchor" aria-hidden="true" href="#close-怎么理解">#</a></h4>
+<p>通俗易懂的说，我们可以把<strong>文件描述符</strong>理解为电话号码。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="nf">pipe</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span>    <span class="c1">// 创建管道；相当于申请了一对专线电话，
+</span></span></span><span class="line"><span class="cl">           <span class="c1">// 其中一条只能听（fd[0]），一条只能说（fd[1]）
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>假设<code>pipe(fd)</code> 后，fd[0]=3，fd[1]=4。</p>
+<p>子进程创建后，会<strong>复制</strong>父进程的整个”通讯录“，而不是新建管道。</p>
+<p>也就是说在子进程中，依然是fd[0]=3，fd[1]=4。</p>
+<p>让我们回到 <code>close()</code> ，可以这样理解，一个进程执行 <code>close(fd[1])</code> ，意味着它删除了这条<strong>拿来说的电话线</strong>（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。</p>
+<p>但值得注意的是，父进程 <code>close(fd[1])</code> 后，<strong>子进程不受影响</strong>，子进程依然可以写数据。</p>
+<blockquote>
+<p>一句话总结：每个进程有自己的 fd，但指向同一个管道。<code>close()</code> 只是减少该管道在这个进程中的引用。</p>
+</blockquote>
+</li>
+<li>
+<h4 id="read-函数返回什么">read() 函数返回什么？<a hidden class="anchor" aria-hidden="true" href="#read-函数返回什么">#</a></h4>
+<p><code>read()</code> 的典型用法如下所示：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">ssize_t</span> <span class="n">n</span> <span class="o">=</span> <span class="nf">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">count</span><span class="p">);</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><table>
+  <thead>
+      <tr>
+          <th>返回值</th>
+          <th>含义</th>
+          <th>场景</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>&gt; 0</strong></td>
+          <td>实际读取的字节数</td>
+          <td>正常情况，可能小于 count（短读）</td>
+      </tr>
+      <tr>
+          <td><strong>0</strong></td>
+          <td>EOF（文件结束）</td>
+          <td><strong>所有写端都已关闭</strong></td>
+      </tr>
+      <tr>
+          <td><strong>-1</strong></td>
+          <td>出错</td>
+          <td>被信号中断、非阻塞无数据等</td>
+      </tr>
+  </tbody>
+</table>
+</li>
+<li>
+<h4 id="创建管道时读写两端自动打开无需-open">创建管道时，读写两端自动打开，无需 <code>open()</code><a hidden class="anchor" aria-hidden="true" href="#创建管道时读写两端自动打开无需-open">#</a></h4>
+</li>
+<li>
+<h4 id="文件描述符fd是啥">文件描述符（fd）是啥？<a hidden class="anchor" aria-hidden="true" href="#文件描述符fd是啥">#</a></h4>
+<p>文件描述符是<strong>进程级别</strong>的”文件句柄“，是一个非负整数（0,1,2,3，&hellip;）。</p>
+<p>可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个<strong>表格的整数索引</strong>。</p>
+<p>进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。</p>
+<ul>
+<li>
+<p>fd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。</p>
+</li>
+<li>
+<p><code>fork()</code> 创建子进程会复制 fd，但指向同一个内核对象</p>
+</li>
+<li>
+<p>fd值有常见的约定：</p>
+<table>
+  <thead>
+      <tr>
+          <th>fd 值</th>
+          <th>含义</th>
+          <th>对应 C 常量</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>0</td>
+          <td>标准输入（stdin）</td>
+          <td>STDIN_FILENO</td>
+      </tr>
+      <tr>
+          <td>1</td>
+          <td>标准输出（stdout）</td>
+          <td>STDOUT_FILENO</td>
+      </tr>
+      <tr>
+          <td>2</td>
+          <td>标准错误（stderr）</td>
+          <td>STDERR_FILENO</td>
+      </tr>
+      <tr>
+          <td>≥3</td>
+          <td>用户打开的文件/管道</td>
+          <td></td>
+      </tr>
+  </tbody>
+</table>
+</li>
+</ul>
+</li>
+<li>
+<h4 id="pipefd-做了什么"><code>pipe(fd)</code> 做了什么？<a hidden class="anchor" aria-hidden="true" href="#pipefd-做了什么">#</a></h4>
+<p>在管道实验中，我们常会看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="n">fd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl"><span class="nf">pipe</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>fd初始化时是空的，<code>pipe(fd)</code>后，创建一个新的管道，并分配两个文件描述符，对管道的读端与写端。</p>
+<p>这里我们能进一步理解<strong>文件描述符的本质</strong>：它就是一个数，用来标识一个内核资源。</p>
+</li>
+<li>
+<h4 id="写端读端是否需要关闭"><strong>写端、读端是否需要关闭？</strong><a hidden class="anchor" aria-hidden="true" href="#写端读端是否需要关闭">#</a></h4>
+<blockquote>
+<p>一句话讲明：不关闭不需要的端会导致 <code>read()</code> <strong>永远阻塞</strong>。</p>
+</blockquote>
+<ul>
+<li>
+<p><strong>写数据</strong>的进程<strong>不关闭读端</strong>（fd[0]）</p>
+<p>能写入，不受影响。</p>
+<p>当所有写端都关闭后，读端应该收到 EOF（<code>read()</code> 返回 0），但如果你<strong>自己还开着读端</strong>，系统认为“还有进程可能写入”，读端会永远阻塞在 <code>read()</code> 上。</p>
+</li>
+<li>
+<p><strong>读数据</strong>的进程<strong>不关闭写端</strong>（fd[1]）</p>
+<p>能读取，如果管道里有数据就可以正常读。</p>
+<p>当管道读空后，<code>read()</code> 不会返回0（EOF），而是<strong>阻塞等待</strong>，因为系统看到你<strong>还开着写端</strong>，认为“迟早还要写数据进来”。</p>
+</li>
+</ul>
+<blockquote>
+<p>一句话解释：管道是<strong>单向通信</strong>。</p>
+</blockquote>
+</li>
+<li>
+<h4 id="关闭写读端减少引用计数">关闭写/读端，<strong>减少引用计数</strong><a hidden class="anchor" aria-hidden="true" href="#关闭写读端减少引用计数">#</a></h4>
+<p>这个计数可以涉及两方面：</p>
+<ul>
+<li>
+<p>文件结构体的引用计数</p>
+<p>调用 <code>pipe(fd)</code> 时，内核会创建：</p>
+<ul>
+<li>
+<p>两个 <code>struct file</code> 对象（代表管道的两端）</p>
+</li>
+<li>
+<p>一个底层的 <code>pipe_inode_info</code> （管道的实际缓冲区）</p>
+</li>
+</ul>
+<p>每个进程持有文件描述符（fd）时，内核中的 <code>struct file</code> 的<strong>引用计数</strong>（<code>f_count</code>）会增加：</p>
+<ul>
+<li>
+<p><code>fork()</code> 时，子进程继承 fd，引用计数 +1</p>
+</li>
+<li>
+<p><code>close()</code> 时，引用计数 -1</p>
+</li>
+</ul>
+<p>当这个引用计数降到0，内核才释放这个文件结构体。</p>
+</li>
+<li>
+<p>管道的“写者计数”（Writer Count）</p>
+<p>管道内部同样存在<strong>写端计数器</strong>。内核需要知道：“还有没有进程要往这个管道写数据？”</p>
+<p>调用 <code>close(fd[1])</code> 时，内核执行：</p>
+<ol>
+<li>
+<p>减少 file 结构体的引用计数</p>
+</li>
+<li>
+<p>检查这是否是最后一个写端。</p>
+<p>如果是，唤醒阻塞的读进程，让它们知道“不会再有数据了”。</p>
+</li>
+</ol>
+</li>
+</ul>
+<blockquote>
+<p>我们看到一个反面教材：</p>
+<ol>
+<li>
+<p>父进程：read(fd[0])，阻塞等待数据</p>
+</li>
+<li>
+<p>子进程：write(fd[1])，写入消息</p>
+</li>
+<li>
+<p>子进程：close(fd[1])，但 <strong>fd[0] 还开着！！</strong></p>
+</li>
+</ol>
+<p>此时，虽然子进程写完且关闭了写端，但还<strong>持有读端</strong>，内核认为：</p>
+<blockquote>
+<p>还有进程持有读端，它可能 fork 出新的子进程来继续写入</p>
+</blockquote>
+<p>因此，计数不会变成0，父进程的 <code>read()</code> 会永远阻塞。</p>
+</blockquote>
+</li>
+<li>
+<h4 id="管道阻塞场景">管道阻塞场景<a hidden class="anchor" aria-hidden="true" href="#管道阻塞场景">#</a></h4>
+<p>既然说到阻塞，我们来看几种<strong>阻塞场景</strong></p>
+<ol>
+<li>
+<p>读空管：当管道中没有数据时，<code>read</code> 会阻塞，知道有进程写数据才被唤醒</p>
+</li>
+<li>
+<p>写满管：管道有容量限制（通常是64KB）。管道满时，写进程必须等读进程“腾出空间”</p>
+</li>
+<li>
+<p>多写一端关闭：当有多个写进程时，只要还有一个写进程持有 fd[1]，读端会认为”还可能有人写“，继续阻塞； <code>read</code> 返回 0，表示所有写端都关闭了。</p>
+</li>
+<li>
+<p>阻塞是线程安全的，唤醒是有序的：</p>
+<p>这个场景稍微复杂些：</p>
+<ul>
+<li>
+<p>父进程开始读，此时管道是空的，阻塞ing</p>
+</li>
+<li>
+<p>子进程依次分别写消息</p>
+</li>
+<li>
+<p><strong>情况出现了！！</strong> 父进程读到子进程1的数据，<strong>直接返回</strong>，结束。</p>
+</li>
+</ul>
+<p>read是流式读取，有数据就读。</p>
+<p>如果需要父进程读完全部数据，必须让子进程全部写完，再读。</p>
+<p>这也是我们实验的重点之一。</p>
+</li>
+</ol>
+</li>
+<li>
+<h4 id="posix-有名信号量">POSIX 有名信号量<a hidden class="anchor" aria-hidden="true" href="#posix-有名信号量">#</a></h4>
+<h5 id="核心api四个动作">核心API（四个动作）<a hidden class="anchor" aria-hidden="true" href="#核心api四个动作">#</a></h5>
+<table>
+  <thead>
+      <tr>
+          <th>函数</th>
+          <th>作用</th>
+          <th>关键参数</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>sem_open(name, flags, mode, value)</code></td>
+          <td><strong>创建或打开</strong></td>
+          <td><code>name</code> 必须以 <code>/</code> 开头（如 <code>&quot;/my_sem&quot;</code>）；<code>O_CREAT</code> 创建；<code>value</code> 初始值</td>
+      </tr>
+      <tr>
+          <td><code>sem_wait(sem)</code></td>
+          <td><strong>P 操作</strong>（等待）</td>
+          <td>值 &gt; 0 则减 1 并返回；值 = 0 则阻塞</td>
+      </tr>
+      <tr>
+          <td><code>sem_post(sem)</code></td>
+          <td><strong>V 操作</strong>（释放）</td>
+          <td>值加 1；若有进程等待，唤醒其中一个</td>
+      </tr>
+      <tr>
+          <td><code>sem_close(sem)</code></td>
+          <td><strong>关闭句柄</strong></td>
+          <td>进程退出时自动调用，但<strong>不删除信号量本身</strong></td>
+      </tr>
+      <tr>
+          <td><code>sem_unlink(name)</code></td>
+          <td><strong>删除信号量</strong></td>
+          <td>从系统中移除；若其他进程正持有，待其 <code>close</code> 后销毁</td>
+      </tr>
+  </tbody>
+</table>
+<p>这里展开讲讲 <code>sem_open</code> 的第2，3个参数：</p>
+<ul>
+<li>
+<p>标志位：控制打开方式，常用按位或（<code>|</code>）组合</p>
+<table>
+  <thead>
+      <tr>
+          <th>标志</th>
+          <th>含义</th>
+          <th>效果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong><code>O_CREAT</code></strong></td>
+          <td>创建模式</td>
+          <td>信号量<strong>不存在则创建</strong>，<strong>存在则直接打开</strong>（最常用）</td>
+      </tr>
+      <tr>
+          <td><strong><code>O_EXCL</code></strong></td>
+          <td>排他创建</td>
+          <td>必须与 <code>O_CREAT</code> 配合使用，若信号量<strong>已存在则报错</strong>（防止重复初始化）</td>
+      </tr>
+      <tr>
+          <td><strong><code>O_RDWR</code></strong></td>
+          <td>读写打开</td>
+          <td>隐式默认，无需显式指定</td>
+      </tr>
+  </tbody>
+</table>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="nf">sem_open</span><span class="p">(</span><span class="s">&#34;/my_sem&#34;</span><span class="p">,</span> <span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">O_EXCL</span><span class="p">,</span> <span class="mo">0644</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>  <span class="c1">// 强制新建，已存在则失败（适合初始化进程）
+</span></span></span><span class="line"><span class="cl"><span class="nf">sem_open</span><span class="p">(</span><span class="s">&#34;/my_sem&#34;</span><span class="p">,</span> <span class="n">O_CREAT</span><span class="p">,</span> <span class="mo">0644</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>           <span class="c1">// 通用模式：没有就建，有就直接用
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>权限位：仅当<strong>实际创建新信号量</strong>时生效（如果信号量已存在，此参数被忽略）</p>
+<p>采用 Unix 标准权限格式，通常写为 <strong>八进制数</strong>。</p>
+<p>有名信号量在内核中对应一个特殊文件（/dev/shm/sem.my_sem）</p>
+<p>0（特殊位）6（文件所有者权限）4（组用户权限）4（其他用户权限）</p>
+<p>0644表示：<strong>创建者</strong>可读写，<strong>其他进程</strong>只能读（无法修改信号量值，但可查询状态）</p>
+<p><strong>常见取值：</strong></p>
+<ul>
+<li>
+<p><code>0644</code>：普通共享（所有用户可读，仅所有者可写）</p>
+</li>
+<li>
+<p><code>0666</code>：完全共享（所有用户可读写，风险较高）</p>
+</li>
+<li>
+<p><code>0600</code>：私有（仅创建者自身进程可访问）</p>
+</li>
+</ul>
+</li>
+</ul>
+<h5 id="典型使用流程">典型使用流程<a hidden class="anchor" aria-hidden="true" href="#典型使用流程">#</a></h5>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="c1">// 1. 创建/打开（类似 open()）
+</span></span></span><span class="line"><span class="cl"><span class="kt">sem_t</span> <span class="o">*</span><span class="n">sem</span> <span class="o">=</span> <span class="nf">sem_open</span><span class="p">(</span><span class="s">&#34;/project_lock&#34;</span><span class="p">,</span> <span class="n">O_CREAT</span><span class="p">,</span> <span class="mo">0644</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// 2. 临界区保护
+</span></span></span><span class="line"><span class="cl"><span class="nf">sem_wait</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>          <span class="c1">// 进入，获取锁
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// ... 访问共享资源
+</span></span></span><span class="line"><span class="cl"><span class="nf">sem_post</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>          <span class="c1">// 退出，释放锁
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// 3. 清理（必须显式删除！）
+</span></span></span><span class="line"><span class="cl"><span class="nf">sem_close</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="nf">sem_unlink</span><span class="p">(</span><span class="s">&#34;/project_lock&#34;</span><span class="p">);</span>  <span class="c1">// 通常由最后一个进程或初始化进程执行
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>值得注意的：有名信号量<strong>生命周期独立于进程</strong>，即使创建进程仍存活，其他进程可继续打开使用。</p>
+<p>这也是和无名信号量（<code>sem_init</code>）的区别之一，无名信号量会随进程结束自动销毁，它仅适用于 <code>fork</code> 后的父子进程。</p>
+</li>
+</ol>
+<h3 id="题目2实现一个管道通信程序">题目2：实现一个管道通信程序<a hidden class="anchor" aria-hidden="true" href="#题目2实现一个管道通信程序">#</a></h3>
+<blockquote>
+<p>由父进程创建一个管道，然后再创建3个子进程，并由这三个子进程利用管道与父进程之间进行通信：子进程发送信息，父进程等三个子进程全部发完消息后再接收信息。</p>
+<p>通信的具体内容可根据自己的需要随意设计，要求能试验阻塞型读写过程中的各种情况，测试管道的默认大小，并且要求利用Posix信号量机制实现进程间对管道的互斥访问。</p>
+<p>运行程序，观察各种情况下，进程实际读写的字节数以及进程阻塞唤醒的情况。</p>
+</blockquote>
+<p>我们先来通过一些小demo看看管道的基本使用方法</p>
+<p>值得注意的：<strong>demo中有一些不严谨的写法（如写进程完成写后，没有关闭写端，而是直接return 0），或许不会导致运行问题（进程退出时会自动清理），但在正式实验中不可以这样写。</strong></p>
+<h4 id="demo1基础管道验证单向通信">demo1：基础管道（验证单向通信）<a hidden class="anchor" aria-hidden="true" href="#demo1基础管道验证单向通信">#</a></h4>
+<p>父进程写，子进程读</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">fd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">pipe</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nf">fork</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 子进程：读
+</span></span></span><span class="line"><span class="cl">        <span class="nf">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>    <span class="c1">// 关闭写端
+</span></span></span><span class="line"><span class="cl">        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;子进程：等待数据...</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="nf">read</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;子进程：读到 %d 字节：%s</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 父进程：写
+</span></span></span><span class="line"><span class="cl">        <span class="nf">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>        <span class="c1">// 观察子进程是否阻塞
+</span></span></span><span class="line"><span class="cl">        <span class="nf">write</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#34;Hello&#34;</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;父进程：已发送</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>子进程：等待数据&hellip;</p>
+<p>（阻塞2秒）</p>
+<p>父进程：已发送</p>
+<p>子进程：读到 5 字节：Hello</p>
+</blockquote>
+<h4 id="demo2管道容量测试观察阻塞">demo2：管道容量测试（观察阻塞）<a hidden class="anchor" aria-hidden="true" href="#demo2管道容量测试观察阻塞">#</a></h4>
+<p>管道满时，写阻塞</p>
+<p>原子性写入限制：要么都写，要么都不写，没有部分写</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">fd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">pipe</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 设置为非阻塞（仅用于演示容量）
+</span></span></span><span class="line"><span class="cl">    <span class="nf">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">F_SETFL</span><span class="p">,</span> <span class="n">O_NONBLOCK</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">4096</span><span class="p">];</span>    <span class="c1">// 4KB
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 不断写入直到阻塞
+</span></span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="nf">write</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nf">perror</span><span class="p">(</span><span class="s">&#34;write&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">            <span class="k">break</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="n">count</span> <span class="o">+=</span> <span class="n">n</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;已写入：%d bytes</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">count</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>已写入：4096 bytes</p>
+<p>已写入：8192 bytes</p>
+<p>已写入：12288 bytes</p>
+<p>……</p>
+<p>已写入：65536 bytes</p>
+<p>write: Resource temporarily unavailable</p>
+</blockquote>
+<h4 id="demo4数据混杂问题">demo4：数据混杂问题<a hidden class="anchor" aria-hidden="true" href="#demo4数据混杂问题">#</a></h4>
+<p>3个子进程同时写，会导致数据混杂，这也是为什么正式实验需要<strong>引入信号量机制</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;sys/wait.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;  </span><span class="cp">
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">fd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nf">pipe</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">perror</span><span class="p">(</span><span class="s">&#34;pipe&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kt">pid_t</span> <span class="n">pid</span> <span class="o">=</span> <span class="nf">fork</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 检查 fork 失败
+</span></span></span><span class="line"><span class="cl">            <span class="nf">perror</span><span class="p">(</span><span class="s">&#34;fork&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">            <span class="nf">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 子进程
+</span></span></span><span class="line"><span class="cl">            <span class="nf">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>  <span class="c1">// 关闭读端
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="kt">char</span> <span class="n">msg</span> <span class="o">=</span> <span class="sc">&#39;0&#39;</span> <span class="o">+</span> <span class="n">i</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">            <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="k">if</span> <span class="p">(</span><span class="nf">write</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">&amp;</span><span class="n">msg</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="nf">perror</span><span class="p">(</span><span class="s">&#34;write&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">                    <span class="nf">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">                <span class="p">}</span>
+</span></span><span class="line"><span class="cl">                <span class="nf">usleep</span><span class="p">(</span><span class="mi">1000</span><span class="p">);</span>  <span class="c1">// 1000 微秒（1毫秒），避免过快
+</span></span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;子进程 %d 写完</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">            <span class="nf">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>  <span class="c1">// 确保输出立即显示
+</span></span></span><span class="line"><span class="cl">            <span class="nf">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>    <span class="c1">// 显式关闭写端（好习惯）
+</span></span></span><span class="line"><span class="cl">            <span class="nf">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>         <span class="c1">// 使用 exit 而非 return，明确结束进程
+</span></span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 父进程
+</span></span></span><span class="line"><span class="cl">    <span class="nf">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>  <span class="c1">// 必须关闭写端，否则 read 永远阻塞
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">result</span><span class="p">[</span><span class="mi">301</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">n</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 循环读取直到 EOF，而不是一次性读 300（更健壮）
+</span></span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="nf">read</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">result</span> <span class="o">+</span> <span class="n">total</span><span class="p">,</span> <span class="mi">300</span> <span class="o">-</span> <span class="n">total</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">total</span> <span class="o">+=</span> <span class="n">n</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="n">result</span><span class="p">[</span><span class="n">total</span><span class="p">]</span> <span class="o">=</span> <span class="sc">&#39;\0&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;实际读取 %d 字节，结果：%s</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">total</span><span class="p">,</span> <span class="n">result</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 等待所有子进程结束，避免僵尸进程
+</span></span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">wait</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>子进程 1 写完</p>
+<p>子进程 0 写完</p>
+<p>实际读取 300 字节，结果：012102100212101020122010212011201201201020210210021021021020101201201221002101212021021012021010212021021012012012012210102120021120201210212102012012012012210021021120210201021201201021021200122101202100120120120120121002112010210201201210201102102021012012010120122101202102101210201220120102120122</p>
+<p>子进程 2 写完</p>
+<p>（多进程并发时，子进程实际开始、打印、结束顺序是混杂的）</p>
+</blockquote>
+<h4 id="demo4posix-有名信号量基础">demo4：POSIX 有名信号量基础<a hidden class="anchor" aria-hidden="true" href="#demo4posix-有名信号量基础">#</a></h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;sys/stat.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;semaphore.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 创建有名信号量，初值为 1（互斥锁）
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// 参数：名字（必须以 / 开头），标志，权限，初值
+</span></span></span><span class="line"><span class="cl">    <span class="kt">sem_t</span> <span class="o">*</span><span class="n">sem</span> <span class="o">=</span> <span class="nf">sem_open</span><span class="p">(</span><span class="s">&#34;/my_sem&#34;</span><span class="p">,</span> <span class="n">O_CREAT</span><span class="p">,</span> <span class="mo">0644</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nf">fork</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;子进程：等待信号量...</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">sem_wait</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;子进程：获得锁，持有3秒...</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;子进程：释放锁</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">sem_post</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>    <span class="c1">// V操作，值从0变1，释放锁
+</span></span></span><span class="line"><span class="cl">        <span class="nf">sem_close</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nf">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>    <span class="c1">// 确保子进程先拿到锁
+</span></span></span><span class="line"><span class="cl">    <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;父进程：等待信号量...</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">sem_wait</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>    <span class="c1">// 此时值为0，阻塞，等待子进程释放
+</span></span></span><span class="line"><span class="cl">    <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;父进程：获得锁</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">sem_post</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nf">sem_close</span><span class="p">(</span><span class="n">sem</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">sem_unlink</span><span class="p">(</span><span class="s">&#34;/my_sem&#34;</span><span class="p">);</span>    <span class="c1">// 删除信号量（清理）
+</span></span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>子进程：等待信号量&hellip;</p>
+<p>子进程：获得锁，持有3秒&hellip;</p>
+<p>（阻塞3秒）</p>
+<p>父进程：等待信号量&hellip;</p>
+<p>（等待一段时间）</p>
+<p>子进程：释放锁</p>
+<p>父进程：获得锁</p>
+</blockquote>
+<p><strong>注意！！</strong> 这个源代码的编译命令不一样：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">gcc lab3-2-demo.c -o  -pthread
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><code>-pthread</code> 是 GCC 的 <strong>POSIX 线程支持选项</strong>，它告诉编译器：</p>
+<ul>
+<li>
+<p><strong>预处理阶段</strong>：定义 <code>_REENTRANT</code> 宏（表示可重入代码）</p>
+</li>
+<li>
+<p><strong>链接阶段</strong>：自动链接 <code>libpthread</code> 线程库</p>
+</li>
+</ul>
+<h4 id="实验代码">实验代码<a hidden class="anchor" aria-hidden="true" href="#实验代码">#</a></h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"></code></pre></td></tr></table>
+</div>
+</div>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://clarkflybee.github.io/tags/os/">OS</a></li>
+      <li><a href="https://clarkflybee.github.io/tags/linux/">Linux</a></li>
+      <li><a href="https://clarkflybee.github.io/tags/thread/">Thread</a></li>
+      <li><a href="https://clarkflybee.github.io/tags/process/">Process</a></li>
+      <li><a href="https://clarkflybee.github.io/tags/pipe/">Pipe</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://clarkflybee.github.io/posts/2026-04-07-os-experiment-lab5-cheatsheet/">
+    <span class="title">« 上一页</span>
+    <br>
+    <span>操作系统实践——知识点与小demo总结（简单文件系统的实现）</span>
+  </a>
+  <a class="next" href="https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>“残差扩散”拯救短临降水预测？DiffCast论文阅读</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>© 2026 ClarkFlyBee · <a href="https://github.com/clarkflybee">GitHub</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

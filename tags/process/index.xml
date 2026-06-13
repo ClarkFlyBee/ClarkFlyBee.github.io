@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Process on ClarkFlyBee&#39;s Blog</title>
+    <link>https://clarkflybee.github.io/tags/process/</link>
+    <description>Recent content in Process on ClarkFlyBee&#39;s Blog</description>
+    <image>
+      <title>ClarkFlyBee&#39;s Blog</title>
+      <url>https://clarkflybee.github.io/images/show.png</url>
+      <link>https://clarkflybee.github.io/images/show.png</link>
+    </image>
+    <generator>Hugo -- 0.154.5</generator>
+    <language>zh-cn</language>
+    <copyright>2026 ClarkFlyBee · GitHub</copyright>
+    <lastBuildDate>Fri, 20 Mar 2026 15:25:36 +0800</lastBuildDate>
+    <atom:link href="https://clarkflybee.github.io/tags/process/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>操作系统实践——知识点与小demo总结（Linux 进程管理）</title>
+      <link>https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/</link>
+      <pubDate>Fri, 20 Mar 2026 15:25:36 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/</guid>
+      <description>&lt;div class=&#34;callout callout-info&#34;&gt;
+  &lt;div class=&#34;callout-header&#34;&gt;
+    &lt;span class=&#34;callout-icon&#34;&gt;ℹ️&lt;/span&gt;
+    &lt;span class=&#34;callout-title&#34;&gt;写在前面&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class=&#34;callout-content&#34;&gt;
+    &lt;p&gt;本文尚未完成，但近期不会补充完整。&lt;/p&gt;
+&lt;p&gt;这里记录一下还需要写的部分：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;实验代码与解析&lt;/li&gt;
+&lt;/ul&gt;
+
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;h2 id=&#34;实验3linux-进程管理&#34;&gt;实验3：Linux 进程管理&lt;/h2&gt;
+&lt;h3 id=&#34;基本原理与知识点&#34;&gt;基本原理与知识点&lt;/h3&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;h4 id=&#34;读端与写端的区分&#34;&gt;&lt;strong&gt;读端与写端的区分&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;&lt;code&gt;piep()&lt;/code&gt; 系统调用中：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;fd[0]&lt;/strong&gt; 是&lt;strong&gt;读端&lt;/strong&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;fd[1]&lt;/strong&gt; 是&lt;strong&gt;写端&lt;/strong&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;h4 id=&#34;close-怎么理解&#34;&gt;close() 怎么理解&lt;/h4&gt;
+&lt;p&gt;通俗易懂的说，我们可以把&lt;strong&gt;文件描述符&lt;/strong&gt;理解为电话号码。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
+&lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt;1
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;2
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;nf&#34;&gt;pipe&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;fd&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// 创建管道；相当于申请了一对专线电话，
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;           &lt;span class=&#34;c1&#34;&gt;// 其中一条只能听（fd[0]），一条只能说（fd[1]）
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;假设&lt;code&gt;pipe(fd)&lt;/code&gt; 后，fd[0]=3，fd[1]=4。&lt;/p&gt;
+&lt;p&gt;子进程创建后，会&lt;strong&gt;复制&lt;/strong&gt;父进程的整个”通讯录“，而不是新建管道。&lt;/p&gt;
+&lt;p&gt;也就是说在子进程中，依然是fd[0]=3，fd[1]=4。&lt;/p&gt;
+&lt;p&gt;让我们回到 &lt;code&gt;close()&lt;/code&gt; ，可以这样理解，一个进程执行 &lt;code&gt;close(fd[1])&lt;/code&gt; ，意味着它删除了这条&lt;strong&gt;拿来说的电话线&lt;/strong&gt;（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。&lt;/p&gt;
+&lt;p&gt;但值得注意的是，父进程 &lt;code&gt;close(fd[1])&lt;/code&gt; 后，&lt;strong&gt;子进程不受影响&lt;/strong&gt;，子进程依然可以写数据。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;一句话总结：每个进程有自己的 fd，但指向同一个管道。&lt;code&gt;close()&lt;/code&gt; 只是减少该管道在这个进程中的引用。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;h4 id=&#34;read-函数返回什么&#34;&gt;read() 函数返回什么？&lt;/h4&gt;
+&lt;p&gt;&lt;code&gt;read()&lt;/code&gt; 的典型用法如下所示：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
+&lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt;1
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;kt&#34;&gt;ssize_t&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;n&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;read&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;fd&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;buf&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;count&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;返回值&lt;/th&gt;
+          &lt;th&gt;含义&lt;/th&gt;
+          &lt;th&gt;场景&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;&amp;gt; 0&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;实际读取的字节数&lt;/td&gt;
+          &lt;td&gt;正常情况，可能小于 count（短读）&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;EOF（文件结束）&lt;/td&gt;
+          &lt;td&gt;&lt;strong&gt;所有写端都已关闭&lt;/strong&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;-1&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;出错&lt;/td&gt;
+          &lt;td&gt;被信号中断、非阻塞无数据等&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;h4 id=&#34;创建管道时读写两端自动打开无需-open&#34;&gt;创建管道时，读写两端自动打开，无需 &lt;code&gt;open()&lt;/code&gt;&lt;/h4&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;h4 id=&#34;文件描述符fd是啥&#34;&gt;文件描述符（fd）是啥？&lt;/h4&gt;
+&lt;p&gt;文件描述符是&lt;strong&gt;进程级别&lt;/strong&gt;的”文件句柄“，是一个非负整数（0,1,2,3，&amp;hellip;）。&lt;/p&gt;
+&lt;p&gt;可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个&lt;strong&gt;表格的整数索引&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;fd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

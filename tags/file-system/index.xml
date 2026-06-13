@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>File System on ClarkFlyBee&#39;s Blog</title>
+    <link>https://clarkflybee.github.io/tags/file-system/</link>
+    <description>Recent content in File System on ClarkFlyBee&#39;s Blog</description>
+    <image>
+      <title>ClarkFlyBee&#39;s Blog</title>
+      <url>https://clarkflybee.github.io/images/show.png</url>
+      <link>https://clarkflybee.github.io/images/show.png</link>
+    </image>
+    <generator>Hugo -- 0.154.5</generator>
+    <language>zh-cn</language>
+    <copyright>2026 ClarkFlyBee · GitHub</copyright>
+    <lastBuildDate>Tue, 07 Apr 2026 14:43:01 +0800</lastBuildDate>
+    <atom:link href="https://clarkflybee.github.io/tags/file-system/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>操作系统实践——知识点与小demo总结（简单文件系统的实现）</title>
+      <link>https://clarkflybee.github.io/posts/2026-04-07-os-experiment-lab5-cheatsheet/</link>
+      <pubDate>Tue, 07 Apr 2026 14:43:01 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/2026-04-07-os-experiment-lab5-cheatsheet/</guid>
+      <description>&lt;h2 id=&#34;实验5简单文件系统的实现&#34;&gt;实验5：简单文件系统的实现&lt;/h2&gt;
+&lt;h3 id=&#34;基础架构与持久化层&#34;&gt;基础架构与持久化层&lt;/h3&gt;
+&lt;h4 id=&#34;宏定义&#34;&gt;宏定义&lt;/h4&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
+&lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt; 1
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 2
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 3
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 4
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 5
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 6
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 7
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 8
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 9
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;10
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;11
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define IMAGE_FILE &amp;#34;fs.img&amp;#34;     &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// 磁盘镜像文件名
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define BLOCK_SIZE 512          &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// 每个数据块字节数（512字节，传统磁盘扇区大小）
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define DATA_BLOCKS 1024        &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// 数据块数量（1024个数据块，数据区512KB）
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define MAX_FILES 256           &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// 文件/目录数上限（DirEntry数组大小）
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define MAX_OPEN_FILES 32       &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// 同时打开文件数上限（OFT表大小）
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define MAX_NAME_LEN 28         &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// 文件名长度上限
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define FAT_FREE (-1)   &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// FAT表空闲块标记
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define FAT_END  (-2)   &lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// FAT表链尾标记
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;cp&#34;&gt;#define FS_MAGIC 0x4D465331u &lt;/span&gt;&lt;span class=&#34;cm&#34;&gt;/* &amp;#34;MFS1&amp;#34; */&lt;/span&gt;&lt;span class=&#34;cp&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;FS_MAGIC&lt;/code&gt; 用于识别文件系统格式，加载时校验合法性，防止用其他文件创建的文件误当作文件系统镜像。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

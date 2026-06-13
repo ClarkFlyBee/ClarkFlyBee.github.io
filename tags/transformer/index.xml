@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Transformer on ClarkFlyBee&#39;s Blog</title>
+    <link>https://clarkflybee.github.io/tags/transformer/</link>
+    <description>Recent content in Transformer on ClarkFlyBee&#39;s Blog</description>
+    <image>
+      <title>ClarkFlyBee&#39;s Blog</title>
+      <url>https://clarkflybee.github.io/images/show.png</url>
+      <link>https://clarkflybee.github.io/images/show.png</link>
+    </image>
+    <generator>Hugo -- 0.154.5</generator>
+    <language>zh-cn</language>
+    <copyright>2026 ClarkFlyBee · GitHub</copyright>
+    <lastBuildDate>Sun, 15 Feb 2026 11:12:29 +0800</lastBuildDate>
+    <atom:link href="https://clarkflybee.github.io/tags/transformer/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>从零开始的Transformer(1): 架构拆解</title>
+      <link>https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/</link>
+      <pubDate>Sun, 15 Feb 2026 11:12:29 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/</guid>
+      <description>&lt;p&gt;在如今的深度学习领域，Transformer架构已经称得上是&lt;strong&gt;经典模型&lt;/strong&gt;了。从最初的NLP自然语言处理到后来推广到计算机视觉领域，ChatGPT等一系列基于Transformer模型的产品，对世界带来翻天覆地的变化改变世界的充分说明了它的强大实力与重要作用。&lt;/p&gt;
+&lt;p&gt;作为深度学习领域的初学者，我想简单介绍这一经典架构的同时，用案例编码来学习模型的实际应用，为后续工作打打基础。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;值得一提的，本文中给出的案例大部分还是来自NLP领域。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;transformer-架构简介&#34;&gt;Transformer 架构简介&lt;/h2&gt;
+&lt;h3 id=&#34;语言模型&#34;&gt;语言模型&lt;/h3&gt;
+&lt;p&gt;正如前文所说，Transformer最开始解决的问题是自然语言处理。Transformer 模型本质上都是预训练&lt;strong&gt;语言模型&lt;/strong&gt;，在大量生语料上进行训练。我们可以看到两类常见的任务：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;基于句子前$n$个词来预测下一个词。&lt;/p&gt;
+&lt;p&gt;因为输出依赖于过去和当前的输入，该任务被称为&lt;strong&gt;因果语言建模&lt;/strong&gt;（causal language modeling）。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;在气象预测领域，也常常见到这个&lt;strong&gt;因果&lt;/strong&gt;（Causual）的概念。&lt;/p&gt;
+&lt;p&gt;我们在训练模型预测未来天气时，预测的结果同样依赖于过去的输入，而不能受未来时间天气的影响，这样的预测符合现实逻辑的。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img alt=&#34;causal_modeling&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/causal_modeling.svg&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;基于上下文（周围的词语）来预测句子中被遮盖掉的词语（masked word）。&lt;/p&gt;
+&lt;p&gt;这类任务称为&lt;strong&gt;遮盖语言建模&lt;/strong&gt;（masked language modeling）。&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&#34;masked_modeling&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/masked_modeling.svg&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;训练这类模型不需要人工标注数据，它们可以对训练过的语言产生&lt;em&gt;统计意义&lt;/em&gt;上的理解。但如果直接拿来完成特定任务，效果往往不好。&lt;/p&gt;
+&lt;h3 id=&#34;迁移学习&#34;&gt;迁移学习&lt;/h3&gt;
+&lt;p&gt;前面提到的预训练相当于是从头开始训练模型：所有模型的权重都被随机初始化，并在没有先验知识的情况下开始训练。显而易见的，这个过程不仅需要海量的训练数据，时间经济成本都非常高。&lt;/p&gt;
+&lt;p&gt;因此，大部分情况下，我们将别人预训练好的模型权重通过 &lt;em&gt;&lt;strong&gt;迁移学习&lt;/strong&gt;&lt;/em&gt; 应用到自己的模型中，使用自己的任务语料对模型进行“二次训练“，通过微调参数使模型适用于新任务。&lt;/p&gt;
+&lt;p&gt;例如，我们可以选择一个在大规模英文语料上预训练好的模型，使用 arXiv 语料进行微调，以生成一个面向学术/研究领域的模型。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;在绝大部分情况下，我们都应该尝试找到一个尽可能接近我们任务的预训练模型，然后微调它。&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这一点在气象领域同样适用。我曾经看到过一个研究（&lt;a href=&#34;https://arxiv.org/abs/2601.20342&#34;&gt;[2601.20342] StormDiT: A generative AI model bridges the 2-6 hour &amp;lsquo;gray zone&amp;rsquo; in precipitation nowcasting&lt;/a&gt;），它就使用了视频生成模型Cosmos-Predict2.5，然后再用气象数据训练它，最终得到气象领域的预测模型。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;transformer-结构&#34;&gt;Transformer 结构&lt;/h3&gt;
+&lt;p&gt;一个常见的Transformer架构示例图如下所示：&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/transformer%E6%9E%B6%E6%9E%84%E5%9B%BE.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;看着很复杂哦，首先简化一下：&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&#34;transformers_blocks&#34; loading=&#34;lazy&#34; src=&#34;https://transformers.run/assets/img/transformers/transformers_blocks.svg&#34;&gt;&lt;/p&gt;
+&lt;p&gt;一个标准的 Transformer 模型主要由两个模块构成：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Encoder（编码器）：负责理解输入文本，为每个输入构造对应的语义表示（语义特征）。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Decoder（解码器）：负责生成输出，使用Encoder输出的语义表示结合其他输入来生成目标序列。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;让我们详细看看两部分的内部结构：&lt;/p&gt;
+&lt;h4 id=&#34;编码器&#34;&gt;编码器&lt;/h4&gt;
+&lt;p&gt;编码器由 N 层相同的模块堆叠而成，每层包括两个子层：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;多头自注意力机制（Multi-Head Self-Attention）：计算输入序列中每个词与其他词的相关性。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;前馈神经网络（Feed-Forward Neural Network）：对每个词进行独立的非线性变换&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;每个子层后面都接有残差连接（Residual Connection）和层归一化（Layer Normalization）&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Transformer &#43; 扩散模型：DiT 入门</title>
+      <link>https://clarkflybee.github.io/posts/2026-02-06-transformer-dit-primer/</link>
+      <pubDate>Fri, 06 Feb 2026 20:09:38 +0800</pubDate>
+      <guid>https://clarkflybee.github.io/posts/2026-02-06-transformer-dit-primer/</guid>
+      <description>&lt;div class=&#34;callout callout-info&#34;&gt;
+  &lt;div class=&#34;callout-header&#34;&gt;
+    &lt;span class=&#34;callout-icon&#34;&gt;ℹ️&lt;/span&gt;
+    &lt;span class=&#34;callout-title&#34;&gt;写在前面&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class=&#34;callout-content&#34;&gt;
+    &lt;p&gt;本文尚未完成，但近期不会补充完整。&lt;/p&gt;
+&lt;p&gt;这里记录一下还需要写的部分：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;diffusion.py&lt;/code&gt; 的代码解析&lt;/li&gt;
+&lt;li&gt;DiT 模型小实验的整体运行效果&lt;/li&gt;
+&lt;li&gt;参考文献也需要补充&lt;/li&gt;
+&lt;/ul&gt;
+
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;blockquote&gt;
+&lt;p&gt;本文内容基于论文 &lt;a href=&#34;https://arxiv.org/abs/2212.09748&#34;&gt;Scalable Diffusion Models with Transformers&lt;/a&gt;。&lt;/p&gt;
+&lt;p&gt;但文章内容并不是论文阅读笔记，而是对 DiT 的入门介绍。未来有机会可以写一个详细的阅读笔记。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;扩散模型介绍&#34;&gt;扩散模型介绍&lt;/h2&gt;
+&lt;p&gt;扩散模型（&lt;em&gt;&lt;strong&gt;Denoising Diffusion Probabilistic Models&lt;/strong&gt;&lt;/em&gt;，DDPMs）在图像/音频/视频生成方面取得了显著的成果。&lt;/p&gt;
+&lt;p&gt;本文中，采用离散时间（潜变量模型）（discrete-time (lantent variable model)）的视角，事实上有多种关于扩散模型的观点，可以都去了解一下。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;随机微分方程（SDE）、得分匹配（Score Matching）、朗之万动力学（Langevin Dynamics）、变分推断视角（Variational Inference）……&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;我们常说的机器学习，或者更准确一些，&lt;strong&gt;监督学习&lt;/strong&gt;中，我们做的是“&lt;strong&gt;判别&lt;/strong&gt;”：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;输入：一张猫的图片&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;输出：标签”cat“&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;本质：学习 p(y|x) （给定图片，预测类别）&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;而扩散模型做的是”&lt;strong&gt;生成&lt;/strong&gt;“，可以理解为与监督学习相反的问题：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;输入：随机噪声&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;输出：一张猫的图片&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;本质：学习 p(x) （数据本身的分布）&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;下面，让我们详细看看扩散模型是如何完成它的工作的：&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://clarkflybee.github.io/posts/2026-02-06-transformer-dit-primer/DDPM.png&#34;&gt;&lt;/p&gt;
+&lt;h3 id=&#34;前向过程数据--噪声&#34;&gt;前向过程：数据 → 噪声&lt;/h3&gt;
+&lt;p&gt;我们定义一个固定的、不需要学习的&lt;strong&gt;前向过程&lt;/strong&gt;（&lt;em&gt;&lt;strong&gt;Forward Process&lt;/strong&gt;&lt;/em&gt;），把真实图像 $x_0$ 逐步变成纯噪声 $x_T$ 。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;h4 id=&#34;为什么要做这个&#34;&gt;&lt;em&gt;&lt;strong&gt;为什么要做这个？&lt;/strong&gt;&lt;/em&gt;&lt;/h4&gt;
+&lt;p&gt;我们在 前向过程 中人为构造一条从&lt;strong&gt;数据到噪声&lt;/strong&gt;的渐进式退化路径。&lt;/p&gt;
+&lt;p&gt;扩散模型可以理解为一个&lt;strong&gt;去噪网络&lt;/strong&gt;，它的工作流程就是对着一张图片（初始是随机噪声），一步一步去掉噪声，最后得到我们要生成的目标图片。&lt;/p&gt;
+&lt;p&gt;那么，我们现在手上有原始图片，我们希望模型学会如何去噪，需要从这一张图片构造出足够多的&lt;strong&gt;训练数据&lt;/strong&gt;供扩散模型学习。&lt;/p&gt;
+&lt;p&gt;我们把原始图片一步步加噪，得到一系列图片（每个图片即对应一个时间步 $t$ ），每个图片都比前一张有更多噪声，直到最后成为纯噪声。&lt;/p&gt;
+&lt;p&gt;然后我们把这一系列图片反过来看，就是一个从纯噪声一步步变成目标图片的过程，这就是扩散模型需要的&lt;strong&gt;训练数据&lt;/strong&gt;。它会从这一系列数据中&lt;strong&gt;学会&lt;/strong&gt;去噪的技巧，最后能够按需求生成图片。&lt;/p&gt;
+&lt;p&gt;总而言之，这就是前向过程可以理解为&lt;mark&gt;&lt;strong&gt;训练数据的构造方式&lt;/strong&gt;&lt;/mark&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;这个数据到噪声的过程是一步步进行的。我们看到其中一步：&lt;/p&gt;
+&lt;h4 id=&#34;单步转移&#34;&gt;单步转移&lt;/h4&gt;
+&lt;p&gt;从第 $t-1$ 步到 第 $t$ 步，我们做的就是依赖当前状态，加一点点高斯噪声：&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

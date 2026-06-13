@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-cn" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>文章 | ClarkFlyBee&#39;s Blog</title>
+<meta name="keywords" content="">
+<meta name="description" content="文章 - ClarkFlyBee&#39;s Blog">
+<meta name="author" content="ClarkFlyBee">
+<link rel="canonical" href="https://clarkflybee.github.io/posts/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://clarkflybee.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://clarkflybee.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://clarkflybee.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://clarkflybee.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://clarkflybee.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" type="application/rss+xml" href="https://clarkflybee.github.io/posts/index.xml" title="rss">
+<link rel="alternate" hreflang="zh-cn" href="https://clarkflybee.github.io/posts/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://clarkflybee.github.io/posts/">
+  <meta property="og:site_name" content="ClarkFlyBee&#39;s Blog">
+  <meta property="og:title" content="文章">
+  <meta property="og:description" content="ClarkFlyBee的博客，记录学习笔记">
+  <meta property="og:locale" content="zh-cn">
+  <meta property="og:type" content="website">
+      <meta property="og:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:title" content="文章">
+<meta name="twitter:description" content="ClarkFlyBee的博客，记录学习笔记">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "文章",
+      "item": "https://clarkflybee.github.io/posts/"
+    }
+  ]
+}
+</script>
+</head>
+<body class="list" id="top">
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://clarkflybee.github.io/" accesskey="h" title="ClarkFlyBee&#39;s Blog (Alt + H)">ClarkFlyBee&#39;s Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://clarkflybee.github.io/" title="首页">
+                    <span>首页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/posts/" title="文章">
+                    <span class="active">文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/tags/" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/categories/" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/about/" title="关于">
+                    <span>关于</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main"> 
+<header class="page-header">
+  <h1>
+    文章
+    <a href="/posts/index.xml" title="RSS" aria-label="RSS">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" height="23">
+        <path d="M4 11a9 9 0 0 1 9 9" />
+        <path d="M4 4a16 16 0 0 1 16 16" />
+        <circle cx="5" cy="19" r="1" />
+      </svg>
+    </a>
+  </h1>
+</header>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">力扣刷题笔记 —— 10.正则表达式匹配
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>题目 题目描述详见：10. 正则表达式匹配 - 力扣（LeetCode）
+题解 📝写在前面之前的题目，或许我不知道快速的、巧妙的解法，但我可以用笨方法，或者说“朴素”的方法是手搓出来。
+但这道题我甚至是思路全无，无从下笔，所以特地来记录一下题解思路。
+💡参考本文的题解来自官方题解正如本题题目 ”正则表达式匹配” 所说，这是一个逐步匹配的过程。
+我们记字符串 $s$ ，字符规律 $p$ 。对于字符规律 $p$ ，它包含以下几类字符：
+普通字符
+&#39;.&#39;：匹配任意单个字符
+&#39;*&#39;：匹配零个或多个前面的那一个元素
+事实上，我们可以进一步分为两类：（1）字符（2）星号。
+我们每次从字符串 $p$ 取出一个 字符 或 字符&#43;星号 的组合：
+对于 $p$ 中的一个字符，它只能在 $s$ 中匹配一个字符，匹配方法具有唯一性；
+对于 p 中字符&#43;星号的组合，它可以在 s 中匹配任意自然数个字符，不具有唯一性。
+因此我们可以考虑使用动态规划，对匹配的方案进行枚举。
+💡说明唯一性？ 关于这里的“唯一性”，指的是匹配方式是否确定。
+对于字符&#43;星号的组合，由于星号可以匹配0个或多个元素，因此单纯看这个组合是无法确定匹配方式的。
+下面是一个例子，单个字符的匹配是唯一确定的，字符&#43;组合则相反：
+模式 面对字符 a 匹配方式 是否唯一 a a 只能匹配这 1 个 a，然后双双后移 ✅ 唯一 . a 只能匹配这 1 个 a，然后双双后移 ✅ 唯一 a* aaa 可以匹配 0 个、1 个、2 个、3 个 a ❌ 不唯一 动态规划？ 可以这样理解，因为 * 带来了分支，我们必须尝试所有的分支，才能知道是否存在一个完美的匹配方案。
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-06-12 14:45:36 +0800 CST'>June 12, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 力扣刷题笔记 —— 10.正则表达式匹配" href="https://clarkflybee.github.io/posts/2026-06-12-leetcode-10-cheatsheet/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">操作系统实践——知识点与小demo总结（简单文件系统的实现）
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>实验5：简单文件系统的实现 基础架构与持久化层 宏定义 1 2 3 4 5 6 7 8 9 10 11 #define IMAGE_FILE &#34;fs.img&#34; // 磁盘镜像文件名 #define BLOCK_SIZE 512 // 每个数据块字节数（512字节，传统磁盘扇区大小） #define DATA_BLOCKS 1024 // 数据块数量（1024个数据块，数据区512KB） #define MAX_FILES 256 // 文件/目录数上限（DirEntry数组大小） #define MAX_OPEN_FILES 32 // 同时打开文件数上限（OFT表大小） #define MAX_NAME_LEN 28 // 文件名长度上限 #define FAT_FREE (-1) // FAT表空闲块标记 #define FAT_END (-2) // FAT表链尾标记 #define FS_MAGIC 0x4D465331u /* &#34;MFS1&#34; */ FS_MAGIC 用于识别文件系统格式，加载时校验合法性，防止用其他文件创建的文件误当作文件系统镜像。
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-04-07 14:43:01 +0800 CST'>April 7, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 操作系统实践——知识点与小demo总结（简单文件系统的实现）" href="https://clarkflybee.github.io/posts/2026-04-07-os-experiment-lab5-cheatsheet/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">操作系统实践——知识点与小demo总结（Linux 进程管理）
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>ℹ️写在前面本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+实验代码与解析 实验3：Linux 进程管理 基本原理与知识点 读端与写端的区分 piep() 系统调用中：
+fd[0] 是读端
+fd[1] 是写端
+close() 怎么理解 通俗易懂的说，我们可以把文件描述符理解为电话号码。
+1 2 pipe(fd) // 创建管道；相当于申请了一对专线电话， // 其中一条只能听（fd[0]），一条只能说（fd[1]） 假设pipe(fd) 后，fd[0]=3，fd[1]=4。
+子进程创建后，会复制父进程的整个”通讯录“，而不是新建管道。
+也就是说在子进程中，依然是fd[0]=3，fd[1]=4。
+让我们回到 close() ，可以这样理解，一个进程执行 close(fd[1]) ，意味着它删除了这条拿来说的电话线（fd[1] 是写端），此后它不能再往这个管道中写数据，只能读。
+但值得注意的是，父进程 close(fd[1]) 后，子进程不受影响，子进程依然可以写数据。
+一句话总结：每个进程有自己的 fd，但指向同一个管道。close() 只是减少该管道在这个进程中的引用。
+read() 函数返回什么？ read() 的典型用法如下所示：
+1 ssize_t n = read(fd, buf, count); 返回值 含义 场景 &gt; 0 实际读取的字节数 正常情况，可能小于 count（短读） 0 EOF（文件结束） 所有写端都已关闭 -1 出错 被信号中断、非阻塞无数据等 创建管道时，读写两端自动打开，无需 open() 文件描述符（fd）是啥？ 文件描述符是进程级别的”文件句柄“，是一个非负整数（0,1,2,3，…）。
+可以这样理解，一个进程中有一张表格，列举了进程打开的I/O资源（文件、管道、设备等），这个文件描述符可以理解为这个表格的整数索引。
+进程通过编号（文件描述符号），可以让内核操作资源，无需知道文件在内核中的复杂结构。
+fd 是进程私有的，比方说有两个进程，进程 A 的 fd=3 可能指向管道；进程 B 的 fd=3 可能指向完全不同的文件。
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-03-20 15:25:36 +0800 CST'>March 20, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 操作系统实践——知识点与小demo总结（Linux 进程管理）" href="https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">“残差扩散”拯救短临降水预测？DiffCast论文阅读
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>ℹ️写在前面本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+论文方法部分尚未完成 实验结果与分析 复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难） 在刚接触气象领域研究时，学长推荐我阅读《DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting》这篇论文，说可以参考学习扩散模型如何应用在气象领域，解决短临降水问题。
+学长自己的研究中，曾经将 DiffCast 作为Baseline之一（据他自己说，效果不够好hh）。我们现在手上的工作也是扩散模型相关，因此阅读这篇论文还是很有必要的。
+相关知识铺垫 短临降水问题定义 我们来看看文章如何定义短临降水问题：
+短临降水问题可以表述为一个时空预测问题（Spatio-temporal prediction problem），基于当前的观测数据，预测未来很短时间范围内（0~6h）的高时空分辨率降雨情况
+输入：$L_{in}$ 帧初始雷达回波图像序列 $x=[x_i]^0_{i=-L_{in}} \in \mathbb{R}^{L_{in} \times H \times W \times C}$
+输出：未来 $L_{out}$ 帧序列 $y=[y_i]^{L_{out}}_{i=1} \in \mathbb{R}^{L_{out} \times H \times W \times C}$
+数学本质：建模条件概率分布 $p(y|x)$
+翻译一下，这个公式表示 ”在已知 $x$ 的条件下，$y$ 发生的概率分布“。
+我们预测的不是唯一的结果，而是要所有未来情况的发生概率。
+短临降水问题不仅仅是“预测下一帧图像”，而是一个需要同时解耦并建模“全局确定性运动”与“局部随机残差”的复杂时空演化问题。
+扩散模型 扩散模型（DDPM）主要包含两个过程：
+前向扩散（Forward Diffusion）
+给定一个清晰图像 $x_0$，在 $T$ 步内逐步加入高斯噪声，得到 $x_1,x_2,\dots,x_T$ 。到了 $x_T$ ，图像就变成了纯高斯噪声。
+逆向去噪（Reverse Denoising）
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-02-24 20:32:24 +0800 CST'>February 24, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to “残差扩散”拯救短临降水预测？DiffCast论文阅读" href="https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">从零开始的Transformer(1): 架构拆解
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>在如今的深度学习领域，Transformer架构已经称得上是经典模型了。从最初的NLP自然语言处理到后来推广到计算机视觉领域，ChatGPT等一系列基于Transformer模型的产品，对世界带来翻天覆地的变化改变世界的充分说明了它的强大实力与重要作用。
+作为深度学习领域的初学者，我想简单介绍这一经典架构的同时，用案例编码来学习模型的实际应用，为后续工作打打基础。
+值得一提的，本文中给出的案例大部分还是来自NLP领域。
+Transformer 架构简介 语言模型 正如前文所说，Transformer最开始解决的问题是自然语言处理。Transformer 模型本质上都是预训练语言模型，在大量生语料上进行训练。我们可以看到两类常见的任务：
+基于句子前$n$个词来预测下一个词。
+因为输出依赖于过去和当前的输入，该任务被称为因果语言建模（causal language modeling）。
+在气象预测领域，也常常见到这个因果（Causual）的概念。
+我们在训练模型预测未来天气时，预测的结果同样依赖于过去的输入，而不能受未来时间天气的影响，这样的预测符合现实逻辑的。
+基于上下文（周围的词语）来预测句子中被遮盖掉的词语（masked word）。
+这类任务称为遮盖语言建模（masked language modeling）。
+训练这类模型不需要人工标注数据，它们可以对训练过的语言产生统计意义上的理解。但如果直接拿来完成特定任务，效果往往不好。
+迁移学习 前面提到的预训练相当于是从头开始训练模型：所有模型的权重都被随机初始化，并在没有先验知识的情况下开始训练。显而易见的，这个过程不仅需要海量的训练数据，时间经济成本都非常高。
+因此，大部分情况下，我们将别人预训练好的模型权重通过 迁移学习 应用到自己的模型中，使用自己的任务语料对模型进行“二次训练“，通过微调参数使模型适用于新任务。
+例如，我们可以选择一个在大规模英文语料上预训练好的模型，使用 arXiv 语料进行微调，以生成一个面向学术/研究领域的模型。
+在绝大部分情况下，我们都应该尝试找到一个尽可能接近我们任务的预训练模型，然后微调它。
+这一点在气象领域同样适用。我曾经看到过一个研究（[2601.20342] StormDiT: A generative AI model bridges the 2-6 hour ‘gray zone’ in precipitation nowcasting），它就使用了视频生成模型Cosmos-Predict2.5，然后再用气象数据训练它，最终得到气象领域的预测模型。
+Transformer 结构 一个常见的Transformer架构示例图如下所示：
+看着很复杂哦，首先简化一下：
+一个标准的 Transformer 模型主要由两个模块构成：
+Encoder（编码器）：负责理解输入文本，为每个输入构造对应的语义表示（语义特征）。
+Decoder（解码器）：负责生成输出，使用Encoder输出的语义表示结合其他输入来生成目标序列。
+让我们详细看看两部分的内部结构：
+编码器 编码器由 N 层相同的模块堆叠而成，每层包括两个子层：
+多头自注意力机制（Multi-Head Self-Attention）：计算输入序列中每个词与其他词的相关性。
+前馈神经网络（Feed-Forward Neural Network）：对每个词进行独立的非线性变换
+每个子层后面都接有残差连接（Residual Connection）和层归一化（Layer Normalization）
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-02-15 11:12:29 +0800 CST'>February 15, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 从零开始的Transformer(1): 架构拆解" href="https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/"></a>
+</article>
+<footer class="page-footer">
+  <nav class="pagination">
+    <a class="next" href="https://clarkflybee.github.io/posts/page/2/">下一页&nbsp;2/2&nbsp;»
+    </a>
+  </nav>
+</footer>
+    </main>
+    
+<footer class="footer">
+        <span>© 2026 ClarkFlyBee · <a href="https://github.com/clarkflybee">GitHub</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+# ClarkFlyBee's Blog
+- [关于我](https://clarkflybee.github.io/about/)
+
+## 文章
+- [力扣刷题笔记 —— 10.正则表达式匹配](https://clarkflybee.github.io/posts/2026-06-12-leetcode-10-cheatsheet/)
+- [操作系统实践——知识点与小demo总结（简单文件系统的实现）](https://clarkflybee.github.io/posts/2026-04-07-os-experiment-lab5-cheatsheet/)
+- [操作系统实践——知识点与小demo总结（Linux 进程管理）](https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/)
+- [“残差扩散”拯救短临降水预测？DiffCast论文阅读](https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/)
+- [从零开始的Transformer(1): 架构拆解](https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/)
+- [Transformer + 扩散模型：DiT 入门](https://clarkflybee.github.io/posts/2026-02-06-transformer-dit-primer/)
+- [混淆矩阵与 AUC：理解T/F/P/N分类评估指标](https://clarkflybee.github.io/posts/2026-02-04-auc-confusion-matrix-primer/)
+- [第一篇博客](https://clarkflybee.github.io/posts/first-blog/)

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-cn" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Dp | ClarkFlyBee&#39;s Blog</title>
+<meta name="keywords" content="">
+<meta name="description" content="ClarkFlyBee的博客，记录学习笔记">
+<meta name="author" content="ClarkFlyBee">
+<link rel="canonical" href="https://clarkflybee.github.io/tags/dp/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://clarkflybee.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://clarkflybee.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://clarkflybee.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://clarkflybee.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://clarkflybee.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" type="application/rss+xml" href="https://clarkflybee.github.io/tags/dp/index.xml" title="rss">
+<link rel="alternate" hreflang="zh-cn" href="https://clarkflybee.github.io/tags/dp/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://clarkflybee.github.io/tags/dp/">
+  <meta property="og:site_name" content="ClarkFlyBee&#39;s Blog">
+  <meta property="og:title" content="Dp">
+  <meta property="og:description" content="ClarkFlyBee的博客，记录学习笔记">
+  <meta property="og:locale" content="zh-cn">
+  <meta property="og:type" content="website">
+      <meta property="og:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:title" content="Dp">
+<meta name="twitter:description" content="ClarkFlyBee的博客，记录学习笔记">
+
+</head>
+<body class="list" id="top">
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://clarkflybee.github.io/" accesskey="h" title="ClarkFlyBee&#39;s Blog (Alt + H)">ClarkFlyBee&#39;s Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://clarkflybee.github.io/" title="首页">
+                    <span>首页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/posts/" title="文章">
+                    <span>文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/tags/" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/categories/" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/about/" title="关于">
+                    <span>关于</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main"> 
+<header class="page-header">
+  <h1>
+    Dp
+    <a href="/tags/dp/index.xml" title="RSS" aria-label="RSS">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" height="23">
+        <path d="M4 11a9 9 0 0 1 9 9" />
+        <path d="M4 4a16 16 0 0 1 16 16" />
+        <circle cx="5" cy="19" r="1" />
+      </svg>
+    </a>
+  </h1>
+</header>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">力扣刷题笔记 —— 10.正则表达式匹配
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>题目 题目描述详见：10. 正则表达式匹配 - 力扣（LeetCode）
+题解 📝写在前面之前的题目，或许我不知道快速的、巧妙的解法，但我可以用笨方法，或者说“朴素”的方法是手搓出来。
+但这道题我甚至是思路全无，无从下笔，所以特地来记录一下题解思路。
+💡参考本文的题解来自官方题解正如本题题目 ”正则表达式匹配” 所说，这是一个逐步匹配的过程。
+我们记字符串 $s$ ，字符规律 $p$ 。对于字符规律 $p$ ，它包含以下几类字符：
+普通字符
+&#39;.&#39;：匹配任意单个字符
+&#39;*&#39;：匹配零个或多个前面的那一个元素
+事实上，我们可以进一步分为两类：（1）字符（2）星号。
+我们每次从字符串 $p$ 取出一个 字符 或 字符&#43;星号 的组合：
+对于 $p$ 中的一个字符，它只能在 $s$ 中匹配一个字符，匹配方法具有唯一性；
+对于 p 中字符&#43;星号的组合，它可以在 s 中匹配任意自然数个字符，不具有唯一性。
+因此我们可以考虑使用动态规划，对匹配的方案进行枚举。
+💡说明唯一性？ 关于这里的“唯一性”，指的是匹配方式是否确定。
+对于字符&#43;星号的组合，由于星号可以匹配0个或多个元素，因此单纯看这个组合是无法确定匹配方式的。
+下面是一个例子，单个字符的匹配是唯一确定的，字符&#43;组合则相反：
+模式 面对字符 a 匹配方式 是否唯一 a a 只能匹配这 1 个 a，然后双双后移 ✅ 唯一 . a 只能匹配这 1 个 a，然后双双后移 ✅ 唯一 a* aaa 可以匹配 0 个、1 个、2 个、3 个 a ❌ 不唯一 动态规划？ 可以这样理解，因为 * 带来了分支，我们必须尝试所有的分支，才能知道是否存在一个完美的匹配方案。
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-06-12 14:45:36 +0800 CST'>June 12, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 力扣刷题笔记 —— 10.正则表达式匹配" href="https://clarkflybee.github.io/posts/2026-06-12-leetcode-10-cheatsheet/"></a>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>© 2026 ClarkFlyBee · <a href="https://github.com/clarkflybee">GitHub</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

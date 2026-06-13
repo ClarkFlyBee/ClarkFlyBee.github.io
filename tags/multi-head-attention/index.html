@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-cn" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Multi-Head-Attention | ClarkFlyBee&#39;s Blog</title>
+<meta name="keywords" content="">
+<meta name="description" content="ClarkFlyBee的博客，记录学习笔记">
+<meta name="author" content="ClarkFlyBee">
+<link rel="canonical" href="https://clarkflybee.github.io/tags/multi-head-attention/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://clarkflybee.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://clarkflybee.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://clarkflybee.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://clarkflybee.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://clarkflybee.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" type="application/rss+xml" href="https://clarkflybee.github.io/tags/multi-head-attention/index.xml" title="rss">
+<link rel="alternate" hreflang="zh-cn" href="https://clarkflybee.github.io/tags/multi-head-attention/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://clarkflybee.github.io/tags/multi-head-attention/">
+  <meta property="og:site_name" content="ClarkFlyBee&#39;s Blog">
+  <meta property="og:title" content="Multi-Head-Attention">
+  <meta property="og:description" content="ClarkFlyBee的博客，记录学习笔记">
+  <meta property="og:locale" content="zh-cn">
+  <meta property="og:type" content="website">
+      <meta property="og:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:title" content="Multi-Head-Attention">
+<meta name="twitter:description" content="ClarkFlyBee的博客，记录学习笔记">
+
+</head>
+<body class="list" id="top">
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://clarkflybee.github.io/" accesskey="h" title="ClarkFlyBee&#39;s Blog (Alt + H)">ClarkFlyBee&#39;s Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://clarkflybee.github.io/" title="首页">
+                    <span>首页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/posts/" title="文章">
+                    <span>文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/tags/" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/categories/" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/about/" title="关于">
+                    <span>关于</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main"> 
+<header class="page-header">
+  <h1>
+    Multi-Head-Attention
+    <a href="/tags/multi-head-attention/index.xml" title="RSS" aria-label="RSS">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" height="23">
+        <path d="M4 11a9 9 0 0 1 9 9" />
+        <path d="M4 4a16 16 0 0 1 16 16" />
+        <circle cx="5" cy="19" r="1" />
+      </svg>
+    </a>
+  </h1>
+</header>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">从零开始的Transformer(1): 架构拆解
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>在如今的深度学习领域，Transformer架构已经称得上是经典模型了。从最初的NLP自然语言处理到后来推广到计算机视觉领域，ChatGPT等一系列基于Transformer模型的产品，对世界带来翻天覆地的变化改变世界的充分说明了它的强大实力与重要作用。
+作为深度学习领域的初学者，我想简单介绍这一经典架构的同时，用案例编码来学习模型的实际应用，为后续工作打打基础。
+值得一提的，本文中给出的案例大部分还是来自NLP领域。
+Transformer 架构简介 语言模型 正如前文所说，Transformer最开始解决的问题是自然语言处理。Transformer 模型本质上都是预训练语言模型，在大量生语料上进行训练。我们可以看到两类常见的任务：
+基于句子前$n$个词来预测下一个词。
+因为输出依赖于过去和当前的输入，该任务被称为因果语言建模（causal language modeling）。
+在气象预测领域，也常常见到这个因果（Causual）的概念。
+我们在训练模型预测未来天气时，预测的结果同样依赖于过去的输入，而不能受未来时间天气的影响，这样的预测符合现实逻辑的。
+基于上下文（周围的词语）来预测句子中被遮盖掉的词语（masked word）。
+这类任务称为遮盖语言建模（masked language modeling）。
+训练这类模型不需要人工标注数据，它们可以对训练过的语言产生统计意义上的理解。但如果直接拿来完成特定任务，效果往往不好。
+迁移学习 前面提到的预训练相当于是从头开始训练模型：所有模型的权重都被随机初始化，并在没有先验知识的情况下开始训练。显而易见的，这个过程不仅需要海量的训练数据，时间经济成本都非常高。
+因此，大部分情况下，我们将别人预训练好的模型权重通过 迁移学习 应用到自己的模型中，使用自己的任务语料对模型进行“二次训练“，通过微调参数使模型适用于新任务。
+例如，我们可以选择一个在大规模英文语料上预训练好的模型，使用 arXiv 语料进行微调，以生成一个面向学术/研究领域的模型。
+在绝大部分情况下，我们都应该尝试找到一个尽可能接近我们任务的预训练模型，然后微调它。
+这一点在气象领域同样适用。我曾经看到过一个研究（[2601.20342] StormDiT: A generative AI model bridges the 2-6 hour ‘gray zone’ in precipitation nowcasting），它就使用了视频生成模型Cosmos-Predict2.5，然后再用气象数据训练它，最终得到气象领域的预测模型。
+Transformer 结构 一个常见的Transformer架构示例图如下所示：
+看着很复杂哦，首先简化一下：
+一个标准的 Transformer 模型主要由两个模块构成：
+Encoder（编码器）：负责理解输入文本，为每个输入构造对应的语义表示（语义特征）。
+Decoder（解码器）：负责生成输出，使用Encoder输出的语义表示结合其他输入来生成目标序列。
+让我们详细看看两部分的内部结构：
+编码器 编码器由 N 层相同的模块堆叠而成，每层包括两个子层：
+多头自注意力机制（Multi-Head Self-Attention）：计算输入序列中每个词与其他词的相关性。
+前馈神经网络（Feed-Forward Neural Network）：对每个词进行独立的非线性变换
+每个子层后面都接有残差连接（Residual Connection）和层归一化（Layer Normalization）
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2026-02-15 11:12:29 +0800 CST'>February 15, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span></footer>
+  <a class="entry-link" aria-label="post link to 从零开始的Transformer(1): 架构拆解" href="https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/"></a>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>© 2026 ClarkFlyBee · <a href="https://github.com/clarkflybee">GitHub</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

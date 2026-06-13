@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-cn" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>“残差扩散”拯救短临降水预测？DiffCast论文阅读 | ClarkFlyBee&#39;s Blog</title>
+<meta name="keywords" content="DiffCast, DDPM, Precipitation-Nowcasting">
+<meta name="description" content="
+  
+    ℹ️
+    写在前面
+  
+  
+    本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+
+论文方法部分尚未完成
+实验结果与分析
+复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难）
+
+
+  
+
+在刚接触气象领域研究时，学长推荐我阅读《DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting》这篇论文，说可以参考学习扩散模型如何应用在气象领域，解决短临降水问题。
+学长自己的研究中，曾经将 DiffCast 作为Baseline之一（据他自己说，效果不够好hh）。我们现在手上的工作也是扩散模型相关，因此阅读这篇论文还是很有必要的。
+相关知识铺垫
+短临降水问题定义
+我们来看看文章如何定义短临降水问题：
+短临降水问题可以表述为一个时空预测问题（Spatio-temporal prediction problem），基于当前的观测数据，预测未来很短时间范围内（0~6h）的高时空分辨率降雨情况
+
+
+输入：$L_{in}$ 帧初始雷达回波图像序列 $x=[x_i]^0_{i=-L_{in}} \in \mathbb{R}^{L_{in} \times H \times W \times C}$
+
+
+输出：未来 $L_{out}$ 帧序列 $y=[y_i]^{L_{out}}_{i=1} \in \mathbb{R}^{L_{out} \times H \times W \times C}$
+
+
+数学本质：建模条件概率分布 $p(y|x)$
+
+翻译一下，这个公式表示 ”在已知 $x$ 的条件下，$y$ 发生的概率分布“。
+我们预测的不是唯一的结果，而是要所有未来情况的发生概率。
+
+
+
+短临降水问题不仅仅是“预测下一帧图像”，而是一个需要同时解耦并建模“全局确定性运动”与“局部随机残差”的复杂时空演化问题。
+扩散模型
+扩散模型（DDPM）主要包含两个过程：
+
+
+前向扩散（Forward Diffusion）
+给定一个清晰图像 $x_0$，在 $T$ 步内逐步加入高斯噪声，得到 $x_1,x_2,\dots,x_T$ 。到了 $x_T$ ，图像就变成了纯高斯噪声。
+
+
+逆向去噪（Reverse Denoising）">
+<meta name="author" content="ClarkFlyBee">
+<link rel="canonical" href="https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://clarkflybee.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://clarkflybee.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://clarkflybee.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://clarkflybee.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://clarkflybee.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="zh-cn" href="https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\[', right: '\\]', display: true},
+                {left: '\\(', right: '\\)', display: false}
+            ],
+            throwOnError: false
+        });
+    });
+</script>
+<meta property="og:url" content="https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/">
+  <meta property="og:site_name" content="ClarkFlyBee&#39;s Blog">
+  <meta property="og:title" content="“残差扩散”拯救短临降水预测？DiffCast论文阅读">
+  <meta property="og:description" content="ℹ️写在前面本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+论文方法部分尚未完成 实验结果与分析 复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难） 在刚接触气象领域研究时，学长推荐我阅读《DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting》这篇论文，说可以参考学习扩散模型如何应用在气象领域，解决短临降水问题。
+学长自己的研究中，曾经将 DiffCast 作为Baseline之一（据他自己说，效果不够好hh）。我们现在手上的工作也是扩散模型相关，因此阅读这篇论文还是很有必要的。
+相关知识铺垫 短临降水问题定义 我们来看看文章如何定义短临降水问题：
+短临降水问题可以表述为一个时空预测问题（Spatio-temporal prediction problem），基于当前的观测数据，预测未来很短时间范围内（0~6h）的高时空分辨率降雨情况
+输入：$L_{in}$ 帧初始雷达回波图像序列 $x=[x_i]^0_{i=-L_{in}} \in \mathbb{R}^{L_{in} \times H \times W \times C}$
+输出：未来 $L_{out}$ 帧序列 $y=[y_i]^{L_{out}}_{i=1} \in \mathbb{R}^{L_{out} \times H \times W \times C}$
+数学本质：建模条件概率分布 $p(y|x)$
+翻译一下，这个公式表示 ”在已知 $x$ 的条件下，$y$ 发生的概率分布“。
+我们预测的不是唯一的结果，而是要所有未来情况的发生概率。
+短临降水问题不仅仅是“预测下一帧图像”，而是一个需要同时解耦并建模“全局确定性运动”与“局部随机残差”的复杂时空演化问题。
+扩散模型 扩散模型（DDPM）主要包含两个过程：
+前向扩散（Forward Diffusion）
+给定一个清晰图像 $x_0$，在 $T$ 步内逐步加入高斯噪声，得到 $x_1,x_2,\dots,x_T$ 。到了 $x_T$ ，图像就变成了纯高斯噪声。
+逆向去噪（Reverse Denoising）">
+  <meta property="og:locale" content="zh-cn">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2026-02-24T20:32:24+08:00">
+    <meta property="article:modified_time" content="2026-02-24T20:32:24+08:00">
+    <meta property="article:tag" content="DiffCast">
+    <meta property="article:tag" content="DDPM">
+    <meta property="article:tag" content="Precipitation-Nowcasting">
+      <meta property="og:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://clarkflybee.github.io/images/show.png">
+<meta name="twitter:title" content="“残差扩散”拯救短临降水预测？DiffCast论文阅读">
+<meta name="twitter:description" content="
+  
+    ℹ️
+    写在前面
+  
+  
+    本文尚未完成，但近期不会补充完整。
+这里记录一下还需要写的部分：
+
+论文方法部分尚未完成
+实验结果与分析
+复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难）
+
+
+  
+
+在刚接触气象领域研究时，学长推荐我阅读《DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting》这篇论文，说可以参考学习扩散模型如何应用在气象领域，解决短临降水问题。
+学长自己的研究中，曾经将 DiffCast 作为Baseline之一（据他自己说，效果不够好hh）。我们现在手上的工作也是扩散模型相关，因此阅读这篇论文还是很有必要的。
+相关知识铺垫
+短临降水问题定义
+我们来看看文章如何定义短临降水问题：
+短临降水问题可以表述为一个时空预测问题（Spatio-temporal prediction problem），基于当前的观测数据，预测未来很短时间范围内（0~6h）的高时空分辨率降雨情况
+
+
+输入：$L_{in}$ 帧初始雷达回波图像序列 $x=[x_i]^0_{i=-L_{in}} \in \mathbb{R}^{L_{in} \times H \times W \times C}$
+
+
+输出：未来 $L_{out}$ 帧序列 $y=[y_i]^{L_{out}}_{i=1} \in \mathbb{R}^{L_{out} \times H \times W \times C}$
+
+
+数学本质：建模条件概率分布 $p(y|x)$
+
+翻译一下，这个公式表示 ”在已知 $x$ 的条件下，$y$ 发生的概率分布“。
+我们预测的不是唯一的结果，而是要所有未来情况的发生概率。
+
+
+
+短临降水问题不仅仅是“预测下一帧图像”，而是一个需要同时解耦并建模“全局确定性运动”与“局部随机残差”的复杂时空演化问题。
+扩散模型
+扩散模型（DDPM）主要包含两个过程：
+
+
+前向扩散（Forward Diffusion）
+给定一个清晰图像 $x_0$，在 $T$ 步内逐步加入高斯噪声，得到 $x_1,x_2,\dots,x_T$ 。到了 $x_T$ ，图像就变成了纯高斯噪声。
+
+
+逆向去噪（Reverse Denoising）">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "文章",
+      "item": "https://clarkflybee.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "“残差扩散”拯救短临降水预测？DiffCast论文阅读",
+      "item": "https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "“残差扩散”拯救短临降水预测？DiffCast论文阅读",
+  "name": "“残差扩散”拯救短临降水预测？DiffCast论文阅读",
+  "description": "\rℹ️\r写在前面\r本文尚未完成，但近期不会补充完整。\n这里记录一下还需要写的部分：\n论文方法部分尚未完成 实验结果与分析 复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难） 在刚接触气象领域研究时，学长推荐我阅读《DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting》这篇论文，说可以参考学习扩散模型如何应用在气象领域，解决短临降水问题。\n学长自己的研究中，曾经将 DiffCast 作为Baseline之一（据他自己说，效果不够好hh）。我们现在手上的工作也是扩散模型相关，因此阅读这篇论文还是很有必要的。\n相关知识铺垫 短临降水问题定义 我们来看看文章如何定义短临降水问题：\n短临降水问题可以表述为一个时空预测问题（Spatio-temporal prediction problem），基于当前的观测数据，预测未来很短时间范围内（0~6h）的高时空分辨率降雨情况\n输入：$L_{in}$ 帧初始雷达回波图像序列 $x=[x_i]^0_{i=-L_{in}} \\in \\mathbb{R}^{L_{in} \\times H \\times W \\times C}$\n输出：未来 $L_{out}$ 帧序列 $y=[y_i]^{L_{out}}_{i=1} \\in \\mathbb{R}^{L_{out} \\times H \\times W \\times C}$\n数学本质：建模条件概率分布 $p(y|x)$\n翻译一下，这个公式表示 ”在已知 $x$ 的条件下，$y$ 发生的概率分布“。\n我们预测的不是唯一的结果，而是要所有未来情况的发生概率。\n短临降水问题不仅仅是“预测下一帧图像”，而是一个需要同时解耦并建模“全局确定性运动”与“局部随机残差”的复杂时空演化问题。\n扩散模型 扩散模型（DDPM）主要包含两个过程：\n前向扩散（Forward Diffusion）\n给定一个清晰图像 $x_0$，在 $T$ 步内逐步加入高斯噪声，得到 $x_1,x_2,\\dots,x_T$ 。到了 $x_T$ ，图像就变成了纯高斯噪声。\n逆向去噪（Reverse Denoising）\n",
+  "keywords": [
+    "DiffCast", "DDPM", "Precipitation-Nowcasting"
+  ],
+  "articleBody": "\rℹ️\r写在前面\r本文尚未完成，但近期不会补充完整。\n这里记录一下还需要写的部分：\n论文方法部分尚未完成 实验结果与分析 复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难） 在刚接触气象领域研究时，学长推荐我阅读《DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting》这篇论文，说可以参考学习扩散模型如何应用在气象领域，解决短临降水问题。\n学长自己的研究中，曾经将 DiffCast 作为Baseline之一（据他自己说，效果不够好hh）。我们现在手上的工作也是扩散模型相关，因此阅读这篇论文还是很有必要的。\n相关知识铺垫 短临降水问题定义 我们来看看文章如何定义短临降水问题：\n短临降水问题可以表述为一个时空预测问题（Spatio-temporal prediction problem），基于当前的观测数据，预测未来很短时间范围内（0~6h）的高时空分辨率降雨情况\n输入：$L_{in}$ 帧初始雷达回波图像序列 $x=[x_i]^0_{i=-L_{in}} \\in \\mathbb{R}^{L_{in} \\times H \\times W \\times C}$\n输出：未来 $L_{out}$ 帧序列 $y=[y_i]^{L_{out}}_{i=1} \\in \\mathbb{R}^{L_{out} \\times H \\times W \\times C}$\n数学本质：建模条件概率分布 $p(y|x)$\n翻译一下，这个公式表示 ”在已知 $x$ 的条件下，$y$ 发生的概率分布“。\n我们预测的不是唯一的结果，而是要所有未来情况的发生概率。\n短临降水问题不仅仅是“预测下一帧图像”，而是一个需要同时解耦并建模“全局确定性运动”与“局部随机残差”的复杂时空演化问题。\n扩散模型 扩散模型（DDPM）主要包含两个过程：\n前向扩散（Forward Diffusion）\n给定一个清晰图像 $x_0$，在 $T$ 步内逐步加入高斯噪声，得到 $x_1,x_2,\\dots,x_T$ 。到了 $x_T$ ，图像就变成了纯高斯噪声。\n逆向去噪（Reverse Denoising）\n我们希望训练一个神经网络，参数是 $\\theta$ 。\n它的任务是：给定第 $t$ 步的噪声图 $x_t$ 和时间步 $t$ ，预测出第 $t-1$ 步稍微清晰一点的图 $x_{t-1}$\n有时间会补充对扩散过程完整的数学定义，或者另起一个博客（Transformer + 扩散模型：DiT 入门）\n那么具体的训练目标是什么呢？论文采用了简化的损失函数，让网络预测加入的噪声 $\\epsilon$ 。\n可以这样理解扩散模型的工作流程：\n我们故意在图里加入噪声，让神经网络学习去猜我们加入了多少噪声。\n猜得越准，说明神经网络越有能力把噪声去掉。\n这样，模型就可以从噪声中还原出我们想要的东西。\n值得一提的是，DiffCast 并不是用扩散模型直接生成降水数据，而是预测 ”残差“，这个思想在我们的研究中同样也有参考，后面会详细阐述。\n论文方法 Diffcast 旨在将降水系统分解为全局运动趋势（global motion trend）和局部随机残差（local stochastic residual）（ $y$ 表示未来降水），\n$$\ry=\\underbrace{\\mu}_{\\text{全局运动趋势}}+\\underbrace{r}_{\\text{局部随机残差}}\r$$并分别用确定性组件（deterministic component）与随机扩散组件（stochastic diffusion component）进行建模。\n确定性组件（下方橙色）：\n输入历史帧 $x$，通过 Base predictor $\\mathcal{P}_{\\theta_1}$ 生成全局运动趋势 $\\mu$\n粗预报，捕捉云系整体移动但模糊\n随机扩散组件（上方蓝色）：\n计算残差 $r=y-\\mu$ （真实值与趋势的偏差），通过 GTUNet（包含 GlobalNet 提取全局运动先验）对残差进行扩散建模，生成局部随机细节 $\\hat{s}$\n输出：最终预测 $\\hat{y}=\\mu+\\hat{s}$（趋势 + 残差修正）\n文章提到，两个组件以端到端方式同步训练，自然地相互协作。\n端到端（End-to-End），多个组件同时、联合训练，而不是分阶段各自独立训练。\n确定性预测骨干 这是一个通用模块，确定性组件允许采用任何确定性预测模型作为基础预测器 $\\mathcal{P}_{\\theta_1}(\\cdot)$ ，无需额外配置\n我们把基础预测器的输出记为 $\\mu=[\\mu_i]^{L_{out}}_{i=1} \\in \\mathbb{R}^{L_{out}\\times H \\times W \\times C}$\n通过给定输入帧 $x$ ，利用任意像素级损失来建模学习 $p_{\\theta_1}(\\mu|x)$ ，比如 MSE：\n$$\r\\mathcal{L}_\\mathcal{P}=\\mathbb{E}[\\lVert \\mu-y \\rVert^2]\r$$或其他原生设计的损失函数，可以跟着预测模型本身调整。$\\theta_1$ 表示该部分的参数。我们称这部分损失为确定性损失（deterministic loss）。\n对然这种方式得到的预测 $\\mu$ 存在模糊（blurry）和高值回波衰减（high-value echoes fading away）问题，但能够捕捉全局运动趋势，有助于后续解耦局部随机残差。$\\mu$ 本身也会为扩散组件提供必要信息。\n这里提到的模糊与高值回波衰减问题，是深度学习确定性预测的固有缺陷。\n模糊——边缘变糊了\n历史帧的强对流中心边界锐利清晰，而预测出来的降水区域像被高斯模糊过。\n这是因为 MSE 存在 “平均效应”，模型会倾向于预测周围像素的平均值，这会导致位置偏移一点，而不至于惩罚太大。\n最终导致锐利的雨带边缘被“涂抹”成渐变，失去细节纹理。\n高值回波衰减——暴雨变小雨\n真实观测到暴雨，而预测未来变为中雨甚至消失。\n实际上云团只是移动，强度并未快速衰减，但模型预测其消失。\n导致这种情况有多种原因：\n数据不平衡：数据集暴雨占比少，模型没学会维持强对流\nMSE 的保守偏见：预测小雨虽然不准确，但模型受到惩罚的风险小，导致模型低估极端值\n时间漂移累积：多步预测时，每一步的小衰减会累积，导致长时效预测强降水消失\n而这些缺陷正是随机扩散组件要修正的。\n随机残差预测 关于局部随机性，我们计算真实值 $y$ 与 $\\mu$ 的残差$r$ 来表征，也就是：\n$$\rr=y-\\mu\r$$但未来降水的真实值 $y$ 未知，因此 $r$ 无法直接预测。\nDiffCast 训练扩散模型来预测残差的演化 。由于 $r$ 表示从 $1$ 到 $L_{out}$ 的序列，我们以自回归方式对其演化进行建模，扩散模型需要建立分布：\n$$\rp_{\\theta_2}(r_i \\mid \\hat{r}_{i-1})\r$$其中 $\\hat{r}_{i-1}$ 表示第 $i-1$ 帧的预测残差，$\\theta_2$ 为扩散模型参数。\n自回归方式（autoregressive manner）用前一刻的预测结果，作为下一刻预测的输入。\n这里表示我们预测第 $i$ 帧残差时，模型不仅会看历史观测，还会看预测的第 $i-1$ 帧残差。\n假设我们使用 $T$ 步去噪扩散建模该分布。前面我们提到过扩散模型的反向去噪过程：\n$$\rp_\\theta(y^{t-1} \\mid y^t)=\\mathcal{N}(y^{t-1};\\mu_\\theta(y^t,t),\\sigma^2_tI)\r$$应用到残差预测的场景，有公式：\n$$\rp_{\\theta_2}(r^{0:T}_i \\mid \\hat{r}_{i-1})=p(r^T)\\prod_{t=1}^{T}p_{\\theta_2}(r^{t-1}_i \\mid r^t_i,\\hat{r}_{i-1})\r$$其中 $r^T \\sim \\mathcal{N}(0,I)$ ，$t$ 为去噪步；$r^t_i$ 表示第 $i$ 帧残差的第 $t$ 个去噪状态。\n这里容易混淆时间帧 $i$ 与去噪步 $t$\n时间帧：上述公式中 $r$ 的下标，描述的是降水的时间点，一帧对应一个时刻。\n范围是 $[-L_{in}, \\dots, 0,1,2,\\dots,L_{out}]$ ，其中 $[1,\\dots,L_{out}]$ 是需要预测的未来时间帧。\n预测第 i 帧降水时，会参考 i-1 帧，也就是之前时间点的降水。\n去噪步：$r$ 的上标，描述的是扩散模型的反向过程中的去噪状态。\n范围是 $[1,2,\\dots,T]$。反向过程学习去噪，去噪步从大到小，图像越来越清晰，最后生成目标图像。\n反向去噪过程中，从公式上看，我们需要训练神经网络学习预测 $\\mu_\\theta$ 。经过数学推导，我们可以得到均值预测公式：\n$$\r\\mu_\\theta(y^t,t)=\\frac{1}{\\sqrt{\\alpha_t}}(y^t-\\frac{\\beta_t}{\\sqrt{1-\\overline{\\alpha}_t}} \\epsilon_\\theta(y^t,t)\r$$根据这个公式，我们可以把优化目标从均值预测转变为噪声估计。也就是说，去噪过程中，从状态 $r^t_i$ 恢复状态 $r^{t-1}_i$ 等价于估计第 $t$ 步加入的噪声 $\\epsilon$ 。\n我们假设扩散过程中每一步的去噪函数为：$\\epsilon_{\\theta_2}(r^t_i,\\hat{r}_{i-1},t)$ ，输入包括先前扩散状态 $r^t_i$ 和最近预测残差 $\\hat{r}_{i-1}$ 为输入。\n最后得到的目标函数为：\n$$\r\\mathcal{L}_\\epsilon=\\mathbb{E}_{(r_{i},r_{i-1}) \\sim r, t, \\epsilon \\sim \\mathcal{N}(0,I)} \\lVert \\epsilon - \\epsilon_{\\theta_2}(r^t_i,\\hat{r}_{i-1},t) \\rVert^2\r$$其中第 $t$ 个去噪状态可以计算为：\n$$\rr^t_i=\\sqrt{\\overline{\\alpha}_t}({\\underbrace{y-\\mathcal{P}_{\\theta_1}(x))_i}_{\\text{残差}}}+\\sqrt{1-\\overline{\\alpha}_t}\\epsilon\r$$我们称这个目标函数为去噪损失（denoising loss）\n就像前面说的，作者用端到端方式训练框架，采用如下联合损失函数：\n$$\r\\mathcal{L}=\\alpha\\sum_{r_i \\in r}\\mathcal{L}_\\epsilon(r_i)+(1-\\alpha)\\mathcal{L}_\\mathcal{P}\r$$其中 $\\alpha \\in [0,1]$ 为平衡两个损失的权重因子。\n训练完成后，我们可以通过先前残差 $\\hat{r}_{i-1}$ ，从高斯噪声开始迭代去噪来预测 $r_i$，公式如下：\n$$\ry^{t-1}=\\frac{1}{\\sqrt{\\alpha_t}}(y^t-\\frac{\\beta_t}{\\sqrt{1-\\overline{\\alpha}_t}}\\epsilon_\\theta(y^t,t))+\\sigma_t\\epsilon\r$$重复此过程 $L_{out}$ 次，得到估计的残差序列 $\\hat{r}=[\\hat{r}_i]^{L_{out}}_{i=1}$ 。\n注意，文章中设置 $\\hat{r}_0=0$ 。这里可能会令人困惑，我们来解释一下。\n我们预测未来的残差，以未来第1帧为例，记为 $\\hat{r}_1$ 。根据前文所说，我们希望模型建立分布：$p_{\\theta_2}(r_i \\mid \\hat{r}_{i-1})$ ，即 $p_{\\theta_2}(r_1 \\mid \\hat{r}_0)$ 。\n也就是说，我们预测第1帧时，依赖于第0帧的预测结果。但未来第0帧这种概念是不存在的，所以我们人为设置 $\\hat{r}_0=0$ 。\n由此，未来第1帧的预测完全基于\n历史观测 $x$ （通过 GlobalNet 编码，见后）\n确定性趋势 $\\mu_1$（来自 $\\mathcal{P_{\\theta_1}}$）\n从纯噪声开始的扩散去噪过程\n最后，我们得到最终预测结果\n$$\r\\hat{y}=\\hat{r}+\\mu\r$$全局时序UNet (GTUNet) 在随机残差预测中，作者设计了一系列详细扩散组件，其中包括：全局时序UNet（Global Temporal UNet）。\n这里简单讲讲 UNet，后面有机会单开一个博客。\nUNet 是一种编码器-解码器架构的卷积神经网络，最初用于生物医学图像分割。其核心结构由收缩路径与扩张路径组成对称的 U 形拓扑。\n该架构的关键在于保留了高分辨率的细粒度特征，使得网络能够同时捕捉全局上下文与局部边界细节，在像素级预测任务中实现了高精度定位。\n值得一提的是，扩散模型领域的开创性工作（Denoising Diffusion Probabilistic Models）就采用了UNet作为噪声估计网络的骨干架构。\nGTUNet 从多个尺度进行残差演化预测：全局运动先验（global motion prior）、序列分段一致性（sequence segment consistency）和帧间时序依赖性（inter-frame temporal dependency）\n全局运动先验 如图中绿色部分所示，作者设计了一个类 ConvRNN 的结构 GlobalNet $\\mathcal{G}_{\\theta_3}$ ，从确定性基线预测 $\\mu$ 中提取全局运动趋势信息，定义为 $h$ ：\n$$\rh=\\mathcal{G}_{\\theta_3}(\\mu)=\\mathcal{G}_{\\theta_3}(\\mathcal{P}_{\\theta_1}(x))\r$$其中 $\\theta_3$ 代表 GlobalNet 的参数。\n这里解释一下什么是 ConvRNN：\nConvRNN（Convolutional Recurrent Neural Network，卷积循环神经网络）是一种将卷积神经网络（CNN）的空间表征能力与循环神经网络（RNN）的时序建模能力耦合的混合架构，专门用于处理具有时空连续性的高维序列数据（如视频帧、气象雷达回波序列）。\n标准 RNN 处理图像序列时，通常将每帧展平为向量，导致空间拓扑信息丢失。ConvRNN 将状态转移矩阵替换为卷积核，解决了这个问题。\n与全连接 RNN 不同的是，ConvRNN 继承了 CNN 的空间平移等变性（Spatial Translation Equivariance）：输入序列中的空间模式在帧间移动时，其对应的隐藏状态特征图也会相应平移，而不会被固定到特定位置的全连接权重“锁定”。这一点在气象预测中很重要，避免了模型预设对降水系统的空间先验。\nConvRNN通过在不同时间步与空间位置共享卷积核参数，参数量得到降低，参数效率提高；同时通过堆叠多层或膨胀卷积（Dilated Convolution），可以扩大时序感受野，捕捉长程运动轨迹。\nGlobalNet 的具体结构如下所示：\n它是一个具有多个时序模块的多层架构，每个时序模块由一个下采样算子、一个 ConvGRU 算子、一个 ResNet 算子组成。\n我们来看看 GlobalNet 的细节\n输入：来自 Base Predictor 的预测结果。这是预测得到的未来帧序列，但存在模糊、细节丢失等问题。\n目标：GlobalNet 并不修改 $\\mu$ 的结果，而是提取其中的运动规律，得到一个高维隐藏状态 $h$ ，后续会提供给扩散模型。\n数据输入 GlobalNet 后会经过多个时序模块（Temporal Block），每个 Block 中首先下采样，空间分辨率逐层降低，实现”在底层保留精细的空间细节，在高层捕捉大尺度的整体运动趋势“。\n这里图上似乎容易让人误解，但根据实际训练流程，我们认为在一个时序模块中下采样（黄色）是最先进行的。\n这里解释一下这些算子：\nDown Sample（下采样） 这一步可以理解为是在降低数据的分辨率，或者更加直观，把图像变小。\n每经过一个时序模块，进行一次下采样，降水图的尺寸缩小一次（例如 128×128 → 64×64 → 32×32）。\n这样可以提取不同尺度下的运动规律，最后会组合成为最后的 $h$ 。\nConvGRU Cell（卷积门控循环单元） CNN只能独立分析每一张图片，无法捕捉多张图像之间的时序关系；\nGRU 是典型的 RNN，能够”记忆“序列数据的特点，但普通 GRU 通常处理一维序列，需要输入一个向量。\n在这里，ConvGRU 可以结合上述两种模型的优点，它能够理解降水图像数据（卷积），学习降水系统是如何从过去移动到未来的（GRU）。\n我们来看看 GRU（Gated Recurrent Unit）是如何工作的：\nRNN，也就是循环神经网络，它可以说是为了处理序列数据 $\\mathcal{X}=(x_1,x_2,\\dots,x_T)$ 而生。标准 RNN 会通过一个递推公式计算隐状态序列 $\\mathcal{H}=(h_1,h_2,\\dots,h_T)$ ：\n$$\rh_t=\\phi({W_{xh}x_t+W_{hh}h_{t-1}+b}), \\;\\;\\; t=1,\\dots,T $$前面我们所说的，需要”从确定性组件的预测数据中提取的“全局运动趋势，就是这里的隐状态（Hidden State）。\n从递推公式上可以看到，某个时刻 $t$ 的隐状态 $h_t$ 依赖于当前数据 $x_t$ 以及前一个时刻的隐状态 $h_{t-1}$。可以这样理解，$h_t$ 编码了历史输入 $x_{1:t}$ 的历史表征。\n我们说 $h_t$ 包含了 $x_1,x_2,\\dots,x_t$ 的信息，这一点可能有些不好理解。其实可以从递推公式中得到。我们简化递推函数并把 $h$ 都用递推函数写出来：\n$h_t=\\mathcal{F}_\\theta(h_{t-1},x_t)=\\mathcal{F}_\\theta({\\mathcal{F}_\\theta(h_{t-2},x_{t-1})},x_t)=\\cdots$\n最后会发现，$h_t$ 仅依赖于 $x_{1:t}$ （当前与过去，与未来 $x_{t+1:T}$ 无关），而且不需要显式访问 $x_{1:t-1}$ ，因为 $h_{t-1}$ 中包含了这些信息。\n也就是说，$h_t$ 是 $x_{1:t}$ 的有损压缩。它忽略了对未来预测无关的细节，保留最关键的动力学特征，也就是我们需要的全局运动趋势。\n”时刻 $t$ “ 应该理解为序列中数据的次序，而不是狭义的时间点。\n与传统RNN相比，GRU引入了门控机制：重置门 $\\mathbf{r}_t$ （如果历史数据已经过时，把它遗忘），更新门 $\\mathbf{z}_t$（新的数据有哪些值得记录，记录下来）。可以理解为，GRU对历史数据进行选择性记忆，保留大尺度平流趋势的同时，也要及时遗忘已消散的局部对流。\n这里对门控的详细数学定义不详细展开，未来有机会单开文章。\nResnet Block（残差块） 这部分是一个时序模块的最后一步。一方面，它的输出会汇入全局隐藏状态 $h$ ；另一方面，还会传入下一个时序模块，继续提取更粗尺度特征。\n残差块对 ConvGRU 编码的内容进行非线性变换与筛选，提取当前尺度的运动特征，并通过残差连接保护已经编码的时序信息不被过度扭曲。\n标准卷积网络会有梯度消失的问题。残差连接（Residual Connection）可以解决这个问题，它的输出可以记作：\n$\\mathbf{y}=\\mathcal{F}(\\mathbf{x})+\\mathbf{x}$\n通过 $+\\mathbf{x}$ 保证深层网络能够被有效训练，也避免已经编码的时序特征被过度平滑或扭曲。\n将提取的隐状态 $h$（Hidden State）作为额外条件注入扩散模型，残差预测重新表示为：\n$$\rr=[p_{\\theta_2}(r_i \\mid \\hat{r}_{i-1},h)]^{L_{out}}_{i=1}\r$$相应的，去噪函数变为：\n$$\r\\epsilon_{\\theta_2}(r^t_i,\\hat{r}_{i-1},\\mathcal{G}_{\\theta_3}(\\mathcal{P}_{\\theta_1}),t)\r$$此时，前面提到的模型训练目标函数\n$$\r\\mathcal{L}=\\alpha\\sum_{r_i \\in r}\\mathcal{L}_\\epsilon(r_i)+(1-\\alpha)\\mathcal{L}_\\mathcal{P}\r$$由 $(\\theta_1,\\theta_2,\\theta_3)$ 共同参数化。\n序列分段一致性 为了更好地保持残差演化的序列一致性，作者建议将残差序列 $r$ 划分为多个段 $s$ 进行预测。\n有研究（MIMO Is All You Need : A Strong Multi-In-Multi-Out Baseline for Video Prediction）表明，在循环时空预测中，多输入多输出（MIMO）优于单输入单输出(SISO)。\n具体示意图见前图黄色部分。我们构建分段并将第 $j$ 段（从0开始）记为：\n$$\rs_{j-1}=r_{[(j-1)K:jK]}\r$$其中 $K$ 表示每段的长度，$j=0,1,\\dots,[L_{out}/K]$ 。\n由此，得到 $s_j \\in \\mathbb{R}^{K \\times H \\times W \\times C}$ ，扩散模型转变为对段级时序分布建模：\n$$\rs=[p_{\\theta_2}(s_j \\mid \\hat{s}_{j-1},h)]^{\\frac{L_{out}}{K}}_{j=1}\r$$这里的划分是人为进行的，那么预测后我们也需要人为地拼接起来。我们通过在 $t$ 步去噪状态 $s^t_j$ 与前一段 $s_{j-1}$ 之间进行通道拼接（channel concatenation）来融入段条件。\n这里详细讲讲什么是通道拼接：\n给定两个张量 $\\mathbf{A},\\mathbf{B} \\in \\mathbb{R}^{K \\times H \\times W \\times C}$ （分别对应上面说的 $s_{j-1}$ 和 $s^t_j$ ），通道拼接也就是沿着最后一个维度连接：\n$$\r\\text{Concat}(\\mathbf{A},\\mathbf{B}) \\in \\mathbb{R}^{K \\times H \\times W \\times 2C}\r$$可以这样理解，我们把两张特征图拼成更厚的“千层饼”，网络可以同时看到“上一段预测了什么”和“当前段带噪状态是什么”。通过显式拼接条件，强制模型维护段与段之间的时序连贯性。\n也就是示意图中这部分（段序号的标注有区别，但无大碍）：\n此外，随着预测提前期的增加，由于不确定性增加，残差也会不可避免地变大。因此，我们需要显式指示段的位置。在设计模型时，除了对去噪步数添加位置嵌入外，还对段索引 $j$ 添加了额外的位置嵌入。\n至此，残差演化扩散模型的目标函数变为：\n$$\r\\mathcal{L}_\\epsilon=\\mathbb{E} \\lVert \\epsilon - \\epsilon_{\\theta_2}(s^t_j,\\hat{s}_{j-1}, \\mathcal{G}_{\\theta_3}(\\mathcal{P}_{\\theta_1}(x)),t,j) \\rVert^2\r$$ 值得一提的，和前面提到的 $\\hat{r}_0=0$ 类似，在预测第一段残差 $s_1$ 时，使用 $s_0=0$\n帧间时序依赖性 为了更好地建模段内的帧间依赖性，DiffCast 的GTUNet包含了时序注意力块（Temp-Attn Block）。实际上，它是 DDPM 中 UNet 的一种时序演化变体。\n时序注意力块由拼接算子、ResNet算子、归一化算子和时序注意力算子构成。\n随后，时序注意力块连接上采样/下采样算子（示意图浅橙色部分），使得段内的预测残差具有时序依赖性。\n来看看时序注意力块的详细部分：（待补充）\nConcatenate\nResnet Block\nNormalization\nTemporal Attention Unit\nUp/Down Sample\n",
+  "wordCount" : "688",
+  "inLanguage": "zh-cn",
+  "image": "https://clarkflybee.github.io/images/show.png","datePublished": "2026-02-24T20:32:24+08:00",
+  "dateModified": "2026-02-24T20:32:24+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "ClarkFlyBee"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://clarkflybee.github.io/posts/2026-02-24-diffcast-deep-dive/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ClarkFlyBee's Blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://clarkflybee.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://clarkflybee.github.io/" accesskey="h" title="ClarkFlyBee&#39;s Blog (Alt + H)">ClarkFlyBee&#39;s Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://clarkflybee.github.io/" title="首页">
+                    <span>首页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/posts/" title="文章">
+                    <span>文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/tags/" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/categories/" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://clarkflybee.github.io/about/" title="关于">
+                    <span>关于</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      “残差扩散”拯救短临降水预测？DiffCast论文阅读
+    </h1>
+    <div class="post-meta"><span title='2026-02-24 20:32:24 +0800 CST'>February 24, 2026</span>&nbsp;·&nbsp;<span>ClarkFlyBee</span>
+
+</div>
+  </header> 
+  <div class="post-content">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="callout callout-info">
+  <div class="callout-header">
+    <span class="callout-icon">ℹ️</span>
+    <span class="callout-title">写在前面</span>
+  </div>
+  <div class="callout-content">
+    <p>本文尚未完成，但近期不会补充完整。</p>
+<p>这里记录一下还需要写的部分：</p>
+<ul>
+<li>论文方法部分尚未完成</li>
+<li>实验结果与分析</li>
+<li>复现（如果可以的话，项目组里有学长指出研究附带的Github仓库中，代码并不完整，复现可能有困难）</li>
+</ul>
+
+  </div>
+</div>
+<p>在刚接触气象领域研究时，学长推荐我阅读《<a href="https://arxiv.org/abs/2312.06734">DiffCast: A Unified Framework via Residual Diffusion for Precipitation Nowcasting</a>》这篇论文，说可以参考学习<strong>扩散模型</strong>如何应用在气象领域，解决短临降水问题。</p>
+<p>学长自己的研究中，曾经将 <strong>DiffCast</strong> 作为Baseline之一（据他自己说，效果不够好hh）。我们现在手上的工作也是扩散模型相关，因此阅读这篇论文还是很有必要的。</p>
+<h2 id="相关知识铺垫">相关知识铺垫<a hidden class="anchor" aria-hidden="true" href="#相关知识铺垫">#</a></h2>
+<h3 id="短临降水问题定义">短临降水问题定义<a hidden class="anchor" aria-hidden="true" href="#短临降水问题定义">#</a></h3>
+<p>我们来看看文章如何定义短临降水问题：</p>
+<p>短临降水问题可以表述为一个时空预测问题（<em><strong>Spatio-temporal prediction problem</strong></em>），基于当前的观测数据，预测未来很短时间范围内（0~6h）的高时空分辨率降雨情况</p>
+<ul>
+<li>
+<p>输入：$L_{in}$ 帧初始雷达回波图像序列 $x=[x_i]^0_{i=-L_{in}} \in \mathbb{R}^{L_{in} \times H \times W \times C}$</p>
+</li>
+<li>
+<p>输出：未来 $L_{out}$ 帧序列 $y=[y_i]^{L_{out}}_{i=1} \in \mathbb{R}^{L_{out} \times H \times W \times C}$</p>
+</li>
+<li>
+<p>数学本质：建模条件概率分布 $p(y|x)$</p>
+<blockquote>
+<p>翻译一下，这个公式表示 ”<strong>在已知 $x$ 的条件下，$y$ 发生的概率分布</strong>“。</p>
+<p>我们预测的不是唯一的结果，而是要所有未来情况的发生概率。</p>
+</blockquote>
+</li>
+</ul>
+<p>短临降水问题不仅仅是“预测下一帧图像”，而是一个<strong>需要同时解耦并建模“全局确定性运动”与“局部随机残差”的复杂时空演化问题</strong>。</p>
+<h3 id="扩散模型">扩散模型<a hidden class="anchor" aria-hidden="true" href="#扩散模型">#</a></h3>
+<p>扩散模型（<em><strong>DDPM</strong></em>）主要包含两个过程：</p>
+<ol>
+<li>
+<p>前向扩散（Forward Diffusion）</p>
+<p>给定一个清晰图像 $x_0$，在 $T$ 步内逐步加入高斯噪声，得到 $x_1,x_2,\dots,x_T$ 。到了 $x_T$ ，图像就变成了纯高斯噪声。</p>
+</li>
+<li>
+<p>逆向去噪（Reverse Denoising）</p>
+<p>我们希望训练一个神经网络，参数是 $\theta$ 。</p>
+<p>它的任务是：给定第 $t$ 步的噪声图 $x_t$ 和时间步 $t$ ，预测出第 $t-1$ 步稍微清晰一点的图 $x_{t-1}$</p>
+</li>
+</ol>
+<blockquote>
+<p>有时间会补充对扩散过程完整的数学定义，或者另起一个博客（<a href="https://clarkflybee.github.io/posts/2026-02-06-transformer-dit-primer/">Transformer + 扩散模型：DiT 入门</a>）</p>
+</blockquote>
+<p>那么具体的训练目标是什么呢？论文采用了简化的损失函数，让网络预测加入的<strong>噪声 $\epsilon$</strong> 。</p>
+<p>可以这样理解扩散模型的工作流程：</p>
+<blockquote>
+<p>我们故意在图里加入噪声，让神经网络学习去猜我们加入了多少噪声。</p>
+<p>猜得越准，说明神经网络越有能力把噪声去掉。</p>
+<p>这样，模型就可以从噪声中还原出我们想要的东西。</p>
+</blockquote>
+<p>值得一提的是，DiffCast 并不是用扩散模型直接生成降水数据，而是预测 <strong>”残差“</strong>，这个思想在我们的研究中同样也有参考，后面会详细阐述。</p>
+<h2 id="论文方法">论文方法<a hidden class="anchor" aria-hidden="true" href="#论文方法">#</a></h2>
+<p>Diffcast 旨在将降水系统分解为<strong>全局运动趋势</strong>（<em><strong>global motion trend</strong></em>）和<strong>局部随机残差</strong>（<em><strong>local stochastic residual</strong></em>）（ $y$ 表示<strong>未来降水</strong>），</p>
+$$
+y=\underbrace{\mu}_{\text{全局运动趋势}}+\underbrace{r}_{\text{局部随机残差}}
+$$<p>并分别用<strong>确定性组件</strong>（<em><strong>deterministic component</strong></em>）与<strong>随机扩散组件</strong>（<em><strong>stochastic diffusion component</strong></em>）进行建模。</p>
+<p><img loading="lazy" src="/posts/2026-02-24-diffcast-deep-dive/DiffCast-framework.png"></p>
+<blockquote>
+<ul>
+<li>
+<p><strong>确定性组件</strong>（下方橙色）：</p>
+<p>输入历史帧 $x$，通过 Base predictor $\mathcal{P}_{\theta_1}$ 生成<strong>全局运动趋势</strong> $\mu$</p>
+<p>粗预报，捕捉云系整体移动但模糊</p>
+</li>
+<li>
+<p><strong>随机扩散组件</strong>（上方蓝色）：</p>
+<p>计算残差 $r=y-\mu$ （真实值与趋势的偏差），通过 GTUNet（包含 GlobalNet 提取全局运动先验）对残差进行扩散建模，生成<strong>局部随机细节</strong> $\hat{s}$</p>
+</li>
+<li>
+<p>输出：最终预测 $\hat{y}=\mu+\hat{s}$（趋势 + 残差修正）</p>
+</li>
+</ul>
+</blockquote>
+<p>文章提到，两个组件以端到端方式同步训练，自然地相互协作。</p>
+<blockquote>
+<p>端到端（<em><strong>End-to-End</strong></em>），多个组件<strong>同时、联合训练</strong>，而不是<strong>分阶段各自独立训练</strong>。</p>
+</blockquote>
+<h3 id="确定性预测骨干">确定性预测骨干<a hidden class="anchor" aria-hidden="true" href="#确定性预测骨干">#</a></h3>
+<p>这是一个通用模块，确定性组件允许采用<strong>任何确定性预测模型</strong>作为基础预测器 $\mathcal{P}_{\theta_1}(\cdot)$ ，无需额外配置</p>
+<p>我们把基础预测器的输出记为 $\mu=[\mu_i]^{L_{out}}_{i=1} \in \mathbb{R}^{L_{out}\times H \times W \times C}$</p>
+<p>通过给定输入帧 $x$ ，利用任意像素级损失来建模学习 $p_{\theta_1}(\mu|x)$ ，比如 MSE：</p>
+$$
+\mathcal{L}_\mathcal{P}=\mathbb{E}[\lVert \mu-y \rVert^2]
+$$<p>或其他原生设计的损失函数，可以跟着预测模型本身调整。$\theta_1$ 表示该部分的参数。我们称这部分损失为确定性损失（<em><strong>deterministic loss</strong></em>）。</p>
+<p>对然这种方式得到的预测 $\mu$ 存在模糊（<em><strong>blurry</strong></em>）和高值回波衰减（<em><strong>high-value echoes fading away</strong></em>）问题，但能够捕捉全局运动趋势，有助于后续解耦局部随机残差。$\mu$ 本身也会为扩散组件提供必要信息。</p>
+<blockquote>
+<p>这里提到的<strong>模糊</strong>与<strong>高值回波衰减</strong>问题，是深度学习<strong>确定性预测</strong>的固有缺陷。</p>
+<ol>
+<li>
+<p>模糊——边缘变糊了</p>
+<p>历史帧的强对流中心边界锐利清晰，而预测出来的降水区域像被高斯模糊过。</p>
+<p>这是因为 MSE 存在 <strong>“平均效应”</strong>，模型会倾向于预测周围像素的平均值，这会导致位置偏移一点，而不至于惩罚太大。</p>
+<p>最终导致锐利的雨带边缘被“涂抹”成渐变，失去细节纹理。</p>
+</li>
+<li>
+<p>高值回波衰减——暴雨变小雨</p>
+<p>真实观测到暴雨，而预测未来变为中雨甚至消失。</p>
+<p>实际上云团只是移动，强度并未快速衰减，但模型预测其消失。</p>
+<p>导致这种情况有多种原因：</p>
+<ol>
+<li>
+<p>数据不平衡：数据集暴雨占比少，模型没学会维持强对流</p>
+</li>
+<li>
+<p>MSE 的保守偏见：预测小雨虽然不准确，但模型受到惩罚的风险小，导致模型<strong>低估极端值</strong></p>
+</li>
+<li>
+<p>时间漂移累积：多步预测时，每一步的小衰减会累积，导致长时效预测强降水消失</p>
+</li>
+</ol>
+</li>
+</ol>
+<p>而这些缺陷正是<strong>随机扩散组件</strong>要修正的。</p>
+</blockquote>
+<h3 id="随机残差预测">随机残差预测<a hidden class="anchor" aria-hidden="true" href="#随机残差预测">#</a></h3>
+<p>关于局部随机性，我们计算真实值 $y$ 与 $\mu$ 的残差$r$ 来表征，也就是：</p>
+$$
+r=y-\mu
+$$<p>但未来降水的真实值 $y$ 未知，因此 $r$ 无法直接预测。</p>
+<p>DiffCast 训练扩散模型来<strong>预测残差的演化</strong> 。由于 $r$ 表示从 $1$ 到 $L_{out}$ 的序列，我们以自回归方式对其演化进行建模，扩散模型需要建立分布：</p>
+$$
+p_{\theta_2}(r_i \mid \hat{r}_{i-1})
+$$<p>其中 $\hat{r}_{i-1}$ 表示第 $i-1$ 帧的预测残差，$\theta_2$ 为扩散模型参数。</p>
+<blockquote>
+<p><strong>自回归方式</strong>（<em><strong>autoregressive manner</strong></em>）用前一刻的预测结果，作为下一刻预测的输入。</p>
+<p>这里表示我们预测第 $i$ 帧残差时，模型不仅会看历史观测，还会看预测的第 $i-1$ 帧残差。</p>
+</blockquote>
+<p>假设我们使用 $T$ 步去噪扩散建模该分布。前面我们提到过扩散模型的反向去噪过程：</p>
+$$
+p_\theta(y^{t-1} \mid y^t)=\mathcal{N}(y^{t-1};\mu_\theta(y^t,t),\sigma^2_tI)
+$$<p>应用到残差预测的场景，有公式：</p>
+$$
+p_{\theta_2}(r^{0:T}_i \mid \hat{r}_{i-1})=p(r^T)\prod_{t=1}^{T}p_{\theta_2}(r^{t-1}_i \mid r^t_i,\hat{r}_{i-1})
+$$<p>其中 $r^T \sim \mathcal{N}(0,I)$ ，$t$ 为去噪步；$r^t_i$ 表示第 $i$ 帧残差的第 $t$ 个去噪状态。</p>
+<hr>
+<p>这里容易混淆<strong>时间帧</strong> $i$ 与<strong>去噪步</strong> $t$</p>
+<ol>
+<li>
+<p>时间帧：上述公式中 $r$ 的下标，描述的是降水的时间点，一帧对应一个时刻。</p>
+<p>范围是 $[-L_{in}, \dots, 0,1,2,\dots,L_{out}]$ ，其中 $[1,\dots,L_{out}]$ 是需要预测的未来时间帧。</p>
+<p>预测第 i 帧降水时，会参考 i-1 帧，也就是之前时间点的降水。</p>
+</li>
+<li>
+<p>去噪步：$r$ 的上标，描述的是扩散模型的<strong>反向过程</strong>中的<strong>去噪状态</strong>。</p>
+<p>范围是 $[1,2,\dots,T]$。反向过程学习去噪，去噪步从大到小，图像越来越清晰，最后生成目标图像。</p>
+</li>
+</ol>
+<hr>
+<p>反向去噪过程中，从公式上看，我们需要训练神经网络学习预测 $\mu_\theta$ 。经过数学推导，我们可以得到均值预测公式：</p>
+$$
+\mu_\theta(y^t,t)=\frac{1}{\sqrt{\alpha_t}}(y^t-\frac{\beta_t}{\sqrt{1-\overline{\alpha}_t}} \epsilon_\theta(y^t,t)
+$$<p>根据这个公式，我们可以把<strong>优化目标</strong>从均值预测转变为<strong>噪声估计</strong>。也就是说，去噪过程中，从状态 $r^t_i$ 恢复状态 $r^{t-1}_i$ 等价于<strong>估计第 $t$ 步加入的噪声 $\epsilon$</strong> 。</p>
+<p>我们假设扩散过程中每一步的去噪函数为：$\epsilon_{\theta_2}(r^t_i,\hat{r}_{i-1},t)$ ，输入包括先前扩散状态 $r^t_i$ 和最近预测残差 $\hat{r}_{i-1}$ 为输入。</p>
+<p>最后得到的目标函数为：</p>
+$$
+\mathcal{L}_\epsilon=\mathbb{E}_{(r_{i},r_{i-1}) \sim r, t, \epsilon \sim \mathcal{N}(0,I)} \lVert \epsilon - \epsilon_{\theta_2}(r^t_i,\hat{r}_{i-1},t) \rVert^2
+$$<p>其中第 $t$ 个去噪状态可以计算为：</p>
+$$
+r^t_i=\sqrt{\overline{\alpha}_t}({\underbrace{y-\mathcal{P}_{\theta_1}(x))_i}_{\text{残差}}}+\sqrt{1-\overline{\alpha}_t}\epsilon
+$$<p>我们称这个目标函数为<strong>去噪损失</strong>（<em><strong>denoising loss</strong></em>）</p>
+<p>就像前面说的，作者用端到端方式训练框架，采用如下联合损失函数：</p>
+$$
+\mathcal{L}=\alpha\sum_{r_i \in r}\mathcal{L}_\epsilon(r_i)+(1-\alpha)\mathcal{L}_\mathcal{P}
+$$<p>其中 $\alpha \in [0,1]$ 为平衡两个损失的权重因子。</p>
+<p>训练完成后，我们可以通过先前残差 $\hat{r}_{i-1}$ ，从高斯噪声开始迭代去噪来预测 $r_i$，公式如下：</p>
+$$
+y^{t-1}=\frac{1}{\sqrt{\alpha_t}}(y^t-\frac{\beta_t}{\sqrt{1-\overline{\alpha}_t}}\epsilon_\theta(y^t,t))+\sigma_t\epsilon
+$$<p>重复此过程 $L_{out}$ 次，得到估计的残差序列 $\hat{r}=[\hat{r}_i]^{L_{out}}_{i=1}$ 。</p>
+<blockquote>
+<p>注意，文章中设置 $\hat{r}_0=0$ 。这里可能会令人困惑，我们来解释一下。</p>
+<p>我们预测未来的残差，以未来第1帧为例，记为 $\hat{r}_1$ 。根据前文所说，我们希望模型建立分布：$p_{\theta_2}(r_i \mid \hat{r}_{i-1})$ ，即 $p_{\theta_2}(r_1 \mid \hat{r}_0)$ 。</p>
+<p>也就是说，我们预测第1帧时，依赖于第0帧的预测结果。但未来第0帧这种概念是不存在的，所以我们人为设置 $\hat{r}_0=0$ 。</p>
+<p>由此，未来第1帧的预测完全基于</p>
+<ol>
+<li>
+<p>历史观测 $x$ （通过 GlobalNet 编码，见后）</p>
+</li>
+<li>
+<p>确定性趋势 $\mu_1$（来自 $\mathcal{P_{\theta_1}}$）</p>
+</li>
+<li>
+<p>从纯噪声开始的扩散去噪过程</p>
+</li>
+</ol>
+</blockquote>
+<p>最后，我们得到最终预测结果</p>
+$$
+\hat{y}=\hat{r}+\mu
+$$<h3 id="全局时序unet-gtunet">全局时序UNet (GTUNet)<a hidden class="anchor" aria-hidden="true" href="#全局时序unet-gtunet">#</a></h3>
+<p>在随机残差预测中，作者设计了一系列详细扩散组件，其中包括：<strong>全局时序UNet</strong>（<em><strong>Global Temporal UNet</strong></em>）。</p>
+<blockquote>
+<p>这里简单讲讲 UNet，后面有机会单开一个博客。</p>
+<p><strong>UNet</strong> 是一种<strong>编码器-解码器架构</strong>的卷积神经网络，最初用于生物医学图像分割。其核心结构由<strong>收缩路径</strong>与<strong>扩张路径</strong>组成对称的 U 形拓扑。</p>
+<p><img loading="lazy" src="/posts/2026-02-24-diffcast-deep-dive/UNet.png"></p>
+<p>该架构的关键在于保留了高分辨率的细粒度特征，使得网络能够同时捕捉全局上下文与局部边界细节，在像素级预测任务中实现了高精度定位。</p>
+<p>值得一提的是，扩散模型领域的开创性工作（<a href="https://arxiv.org/abs/2006.11239">Denoising Diffusion Probabilistic Models</a>）就采用了UNet作为<strong>噪声估计网络的骨干架构</strong>。</p>
+</blockquote>
+<p><img loading="lazy" src="/posts/2026-02-24-diffcast-deep-dive/GTUNet.png"></p>
+<p>GTUNet 从多个尺度进行残差演化预测：<strong>全局运动先验</strong>（<em><strong>global motion prior</strong></em>）、<strong>序列分段一致性</strong>（<em><strong>sequence segment consistency</strong></em>）和帧间时序依赖性（<em><strong>inter-frame temporal dependency</strong></em>）</p>
+<h4 id="全局运动先验">全局运动先验<a hidden class="anchor" aria-hidden="true" href="#全局运动先验">#</a></h4>
+<p>如图中绿色部分所示，作者设计了一个类 ConvRNN 的结构 <strong>GlobalNet $\mathcal{G}_{\theta_3}$</strong> ，从确定性基线预测 $\mu$ 中提取<strong>全局运动趋势信息</strong>，定义为 $h$ ：</p>
+$$
+h=\mathcal{G}_{\theta_3}(\mu)=\mathcal{G}_{\theta_3}(\mathcal{P}_{\theta_1}(x))
+$$<p>其中 $\theta_3$ 代表 GlobalNet 的参数。</p>
+<blockquote>
+<p>这里解释一下什么是 <strong>ConvRNN</strong>：</p>
+<p>ConvRNN（<strong><em>Convolutional Recurrent Neural Network</em>，卷积循环神经网络</strong>）是一种<strong>将卷积神经网络（CNN）的空间表征能力与循环神经网络（RNN）的时序建模能力耦合的混合架构</strong>，专门用于处理具有<strong>时空连续性的高维序列数据</strong>（如视频帧、气象雷达回波序列）。</p>
+<p>标准 RNN 处理图像序列时，通常将每帧展平为向量，导致空间拓扑信息丢失。ConvRNN <strong>将状态转移矩阵替换为卷积核</strong>，解决了这个问题。</p>
+<p>与全连接 RNN 不同的是，ConvRNN 继承了 CNN 的<strong>空间平移等变性</strong>（<em><strong>Spatial Translation Equivariance</strong></em>）：输入序列中的空间模式在帧间移动时，其对应的隐藏状态特征图也会相应平移，而不会被固定到特定位置的全连接权重“锁定”。这一点在气象预测中很重要，避免了模型预设对降水系统的空间先验。</p>
+<p>ConvRNN通过在不同时间步与空间位置共享卷积核参数，参数量得到降低，参数效率提高；同时通过堆叠多层或膨胀卷积（<strong>Dilated Convolution</strong>），可以扩大时序感受野，捕捉长程运动轨迹。</p>
+</blockquote>
+<p>GlobalNet 的具体结构如下所示：</p>
+<p><img loading="lazy" src="/posts/2026-02-24-diffcast-deep-dive/GlobalNet.png"></p>
+<p>它是一个具有多个时序模块的多层架构，每个时序模块由一个下采样算子、一个 ConvGRU 算子、一个 ResNet 算子组成。</p>
+<hr>
+<p>我们来看看 GlobalNet 的细节</p>
+<ul>
+<li>
+<p><strong>输入</strong>：来自 Base Predictor 的预测结果。这是预测得到的<strong>未来帧序列</strong>，但存在模糊、细节丢失等问题。</p>
+</li>
+<li>
+<p><strong>目标</strong>：GlobalNet 并不修改 $\mu$ 的结果，而是提取其中的<strong>运动规律</strong>，得到一个<strong>高维隐藏状态 $h$</strong> ，后续会提供给扩散模型。</p>
+</li>
+</ul>
+<p>数据输入 GlobalNet 后会经过多个时序模块（<em><strong>Temporal Block</strong></em>），每个 Block 中首先下采样，<strong>空间分辨率逐层降低</strong>，实现”在底层保留精细的空间细节，在高层捕捉大尺度的整体运动趋势“。</p>
+<blockquote>
+<p>这里图上似乎容易让人误解，但根据实际训练流程，我们认为在一个时序模块中下采样（黄色）是<strong>最先进行</strong>的。</p>
+</blockquote>
+<p>这里解释一下这些算子：</p>
+<h5 id="down-sample下采样">Down Sample（下采样）<a hidden class="anchor" aria-hidden="true" href="#down-sample下采样">#</a></h5>
+<p>这一步可以理解为是在<strong>降低数据的分辨率</strong>，或者更加直观，<strong>把图像变小</strong>。</p>
+<p>每经过一个时序模块，进行一次下采样，降水图的尺寸缩小一次（例如 128×128 →  64×64 → 32×32）。</p>
+<p>这样可以提取<strong>不同尺度下的运动规律</strong>，最后会组合成为最后的 $h$ 。</p>
+<h5 id="convgru-cell卷积门控循环单元">ConvGRU Cell（卷积门控循环单元）<a hidden class="anchor" aria-hidden="true" href="#convgru-cell卷积门控循环单元">#</a></h5>
+<ul>
+<li>
+<p>CNN只能独立分析每一张图片，无法捕捉多张图像之间的时序关系；</p>
+</li>
+<li>
+<p>GRU 是典型的 RNN，能够”记忆“序列数据的特点，但普通 GRU 通常处理一维序列，需要输入一个向量。</p>
+</li>
+</ul>
+<p>在这里，ConvGRU 可以结合上述两种模型的优点，它能够理解降水图像数据（卷积），学习降水系统是如何从过去移动到未来的（GRU）。</p>
+<p>我们来看看 <strong>GRU</strong>（<em><strong>Gated Recurrent Unit</strong></em>）是如何工作的：</p>
+<p>RNN，也就是循环神经网络，它可以说是为了处理序列数据 $\mathcal{X}=(x_1,x_2,\dots,x_T)$ 而生。标准 RNN 会通过一个递推公式计算<strong>隐状态序列</strong> $\mathcal{H}=(h_1,h_2,\dots,h_T)$ ：</p>
+$$
+h_t=\phi({W_{xh}x_t+W_{hh}h_{t-1}+b}), \;\;\; t=1,\dots,T 
+$$<p>前面我们所说的，需要”从确定性组件的预测数据中提取的“全局运动趋势，就是这里的<strong>隐状态</strong>（<em><strong>Hidden State</strong></em>）。</p>
+<p>从递推公式上可以看到，某个时刻 $t$ 的隐状态 $h_t$ 依赖于当前数据 $x_t$ 以及前一个时刻的隐状态 $h_{t-1}$。可以这样理解，$h_t$ 编码了历史输入 $x_{1:t}$ 的历史表征。</p>
+<blockquote>
+<ul>
+<li>
+<p>我们说 $h_t$ 包含了 $x_1,x_2,\dots,x_t$ 的信息，这一点可能有些不好理解。其实可以从递推公式中得到。我们简化递推函数并把 $h$ 都用递推函数写出来：</p>
+<p>$h_t=\mathcal{F}_\theta(h_{t-1},x_t)=\mathcal{F}_\theta({\mathcal{F}_\theta(h_{t-2},x_{t-1})},x_t)=\cdots$</p>
+<p>最后会发现，$h_t$ 仅依赖于 $x_{1:t}$ （当前与过去，与未来 $x_{t+1:T}$ 无关），而且不需要显式访问 $x_{1:t-1}$ ，因为 $h_{t-1}$ 中包含了这些信息。</p>
+<p>也就是说，$h_t$ 是 $x_{1:t}$ 的<strong>有损压缩</strong>。它忽略了对未来预测无关的细节，保留最关键的动力学特征，也就是我们需要的全局运动趋势。</p>
+</li>
+<li>
+<p><strong>”时刻 $t$ “</strong> 应该理解为序列中数据的次序，而不是狭义的时间点。</p>
+</li>
+</ul>
+</blockquote>
+<p>与传统RNN相比，GRU引入了<strong>门控机制</strong>：重置门 $\mathbf{r}_t$ （如果历史数据已经过时，把它遗忘），更新门 $\mathbf{z}_t$（新的数据有哪些值得记录，记录下来）。可以理解为，GRU对历史数据进行<strong>选择性记忆</strong>，保留大尺度平流趋势的同时，也要及时遗忘已消散的局部对流。</p>
+<blockquote>
+<p>这里对门控的详细数学定义不详细展开，未来有机会单开文章。</p>
+</blockquote>
+<h5 id="resnet-block残差块">Resnet Block（残差块）<a hidden class="anchor" aria-hidden="true" href="#resnet-block残差块">#</a></h5>
+<p>这部分是一个时序模块的最后一步。一方面，它的输出会汇入全局隐藏状态 $h$ ；另一方面，还会传入下一个时序模块，继续提取更粗尺度特征。</p>
+<p>残差块对 ConvGRU 编码的内容进行<strong>非线性变换与筛选</strong>，提取当前尺度的运动特征，并通过<strong>残差连接</strong>保护已经编码的时序信息不被过度扭曲。</p>
+<blockquote>
+<p>标准卷积网络会有<strong>梯度消失</strong>的问题。<strong>残差连接</strong>（<em><strong>Residual Connection</strong></em>）可以解决这个问题，它的输出可以记作：</p>
+<p>$\mathbf{y}=\mathcal{F}(\mathbf{x})+\mathbf{x}$</p>
+<p>通过 $+\mathbf{x}$ 保证深层网络能够被有效训练，也避免已经编码的时序特征被过度平滑或扭曲。</p>
+</blockquote>
+<hr>
+<p>将提取的隐状态 $h$（Hidden State）作为额外条件注入扩散模型，残差预测重新表示为：</p>
+$$
+r=[p_{\theta_2}(r_i \mid \hat{r}_{i-1},h)]^{L_{out}}_{i=1}
+$$<p>相应的，去噪函数变为：</p>
+$$
+\epsilon_{\theta_2}(r^t_i,\hat{r}_{i-1},\mathcal{G}_{\theta_3}(\mathcal{P}_{\theta_1}),t)
+$$<p>此时，前面提到的模型训练目标函数</p>
+$$
+\mathcal{L}=\alpha\sum_{r_i \in r}\mathcal{L}_\epsilon(r_i)+(1-\alpha)\mathcal{L}_\mathcal{P}
+$$<p>由 $(\theta_1,\theta_2,\theta_3)$ 共同参数化。</p>
+<h4 id="序列分段一致性">序列分段一致性<a hidden class="anchor" aria-hidden="true" href="#序列分段一致性">#</a></h4>
+<p>为了更好地保持残差演化的序列一致性，作者建议将残差序列 $r$ 划分为多个段 $s$ 进行预测。</p>
+<blockquote>
+<p>有研究（<a href="https://arxiv.org/abs/2212.04655">MIMO Is All You Need : A Strong Multi-In-Multi-Out Baseline for Video Prediction</a>）表明，在循环时空预测中，多输入多输出（MIMO）优于单输入单输出(SISO)。</p>
+</blockquote>
+<p>具体示意图见前图黄色部分。我们构建分段并将第 $j$ 段（从0开始）记为：</p>
+$$
+s_{j-1}=r_{[(j-1)K:jK]}
+$$<p>其中 $K$ 表示每段的长度，$j=0,1,\dots,[L_{out}/K]$ 。</p>
+<p>由此，得到 $s_j \in \mathbb{R}^{K \times H \times W \times C}$ ，扩散模型转变为对<strong>段级</strong>时序分布建模：</p>
+$$
+s=[p_{\theta_2}(s_j \mid \hat{s}_{j-1},h)]^{\frac{L_{out}}{K}}_{j=1}
+$$<p>这里的划分是人为进行的，那么预测后我们也需要人为地<strong>拼接</strong>起来。我们通过在 $t$ 步去噪状态 $s^t_j$ 与前一段 $s_{j-1}$ 之间进行<strong>通道拼接</strong>（<em><strong>channel concatenation</strong></em>）来融入段条件。</p>
+<hr>
+<p>这里详细讲讲什么是<strong>通道拼接</strong>：</p>
+<p>给定两个张量 $\mathbf{A},\mathbf{B} \in \mathbb{R}^{K \times H \times W \times C}$ （分别对应上面说的 $s_{j-1}$ 和 $s^t_j$ ），通道拼接也就是沿着最后一个维度连接：</p>
+$$
+\text{Concat}(\mathbf{A},\mathbf{B}) \in \mathbb{R}^{K \times H \times W \times 2C}
+$$<p>可以这样理解，我们把两张特征图拼成更厚的“千层饼”，网络可以同时看到“<strong>上一段预测了什么</strong>”和“<strong>当前段带噪状态是什么</strong>”。通过显式拼接条件，强制模型维护段与段之间的时序连贯性。</p>
+<p>也就是示意图中这部分（段序号的标注有区别，但无大碍）：</p>
+<p><img loading="lazy" src="/posts/2026-02-24-diffcast-deep-dive/channel-concatenation.png"></p>
+<hr>
+<p>此外，随着预测提前期的增加，由于不确定性增加，残差也会不可避免地变大。因此，我们需要<strong>显式指示段的位置</strong>。在设计模型时，除了对去噪步数添加<strong>位置嵌入</strong>外，还对<strong>段索引</strong> $j$ 添加了额外的位置嵌入。</p>
+<p>至此，残差演化扩散模型的目标函数变为：</p>
+$$
+\mathcal{L}_\epsilon=\mathbb{E} \lVert \epsilon - \epsilon_{\theta_2}(s^t_j,\hat{s}_{j-1}, \mathcal{G}_{\theta_3}(\mathcal{P}_{\theta_1}(x)),t,j) \rVert^2
+$$<blockquote>
+<p>值得一提的，和前面提到的 $\hat{r}_0=0$ 类似，在预测第一段残差 $s_1$ 时，使用 $s_0=0$</p>
+</blockquote>
+<h4 id="帧间时序依赖性">帧间时序依赖性<a hidden class="anchor" aria-hidden="true" href="#帧间时序依赖性">#</a></h4>
+<p>为了更好地建模<strong>段内</strong>的帧间依赖性，DiffCast 的GTUNet包含了<strong>时序注意力块</strong>（<em><strong>Temp-Attn Block</strong></em>）。实际上，它是 DDPM 中 UNet 的一种时序演化变体。</p>
+<p>时序注意力块由拼接算子、ResNet算子、归一化算子和时序注意力算子构成。</p>
+<p>随后，时序注意力块连接上采样/下采样算子（示意图浅橙色部分），使得段内的预测残差具有时序依赖性。</p>
+<hr>
+<p>来看看时序注意力块的详细部分：（待补充）</p>
+<p><img loading="lazy" src="/posts/2026-02-24-diffcast-deep-dive/Temp-Attn.png"></p>
+<ul>
+<li>
+<p>Concatenate</p>
+</li>
+<li>
+<p>Resnet Block</p>
+</li>
+<li>
+<p>Normalization</p>
+</li>
+<li>
+<p>Temporal Attention Unit</p>
+</li>
+<li>
+<p>Up/Down Sample</p>
+</li>
+</ul>
+<hr>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://clarkflybee.github.io/tags/diffcast/">DiffCast</a></li>
+      <li><a href="https://clarkflybee.github.io/tags/ddpm/">DDPM</a></li>
+      <li><a href="https://clarkflybee.github.io/tags/precipitation-nowcasting/">Precipitation-Nowcasting</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://clarkflybee.github.io/posts/2026-03-20-os-experiment-lab3-cheatsheet/">
+    <span class="title">« 上一页</span>
+    <br>
+    <span>操作系统实践——知识点与小demo总结（Linux 进程管理）</span>
+  </a>
+  <a class="next" href="https://clarkflybee.github.io/posts/2026-02-15-transformer-from-scratch-1/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>从零开始的Transformer(1): 架构拆解</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>© 2026 ClarkFlyBee · <a href="https://github.com/clarkflybee">GitHub</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
